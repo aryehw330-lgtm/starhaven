@@ -218,6 +218,7 @@ textarea{width:100%;box-sizing:border-box;min-height:170px;background:var(--pane
         <div class="ov-speed" role="group" aria-label="Speed on map"><button data-s="0">❚❚</button><button data-s="1">1×</button><button data-s="2">3×</button><button data-s="3">10×</button></div>
       </div>
       <div class="hud" id="hud" aria-label="World stats"></div>
+      <details class="card" id="bguide"><summary style="cursor:pointer;font:500 12px var(--mono);letter-spacing:1.2px;text-transform:uppercase;color:var(--muted)">Building guide · what each building does</summary><div id="bguideList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;margin-top:10px"></div></details>
       <section class="card"><h2>The species</h2><div class="species" id="species"></div></section>
       <div class="bar">
         <div class="grp" role="group" aria-label="Planets" id="planets"></div>
@@ -315,6 +316,10 @@ const TYPES={
   trade:{name:'Trade Hub',cost:140,time:600,house:0,jobs:4,skill:'trader',f:2.5},
   garden:{name:'Star Garden',cost:60,time:250,house:0,jobs:1,skill:'artist',f:1.5},
   port:{name:'Spaceport',cost:220,time:800,house:0,jobs:2,skill:'pilot',f:1.5},
+  sky:{name:'Skyscraper',cost:420,time:1300,house:40,jobs:2,skill:'engineer',f:1.5},
+  mall:{name:'Mega Mall',cost:500,time:1200,house:0,jobs:8,skill:'trader',f:2.5},
+  amuse:{name:'Amusement Park',cost:450,time:1000,house:0,jobs:4,skill:'artist',f:1.5},
+  water:{name:'Water Park',cost:350,time:900,house:0,jobs:3,skill:'artist',f:1.5},
 };
 const SKILL_B={genius:'lab',engineer:'fab',fixer:'repair',cook:'galley',farmer:'farm',medic:'med',teacher:'academy',pilot:'port',leader:'trade',artist:'garden',trader:'trade',worker:'trade'};
 const TECH=[
@@ -342,6 +347,8 @@ const PCH=[
 const pc=col=>PCH[(col&&col.p)||0]||PCH[0];
 function pm(c,k){const col=colById(c.col);if(!col)return 1;const v=pc(col)[k];if(v==null)return 1;if(spOf(c).adapt===col.p&&(v>1?k!=='speed':v<1))return 1;return v}
 const BASE_N=11;
+const ICON={hall:'🏛️',home:'🏠',apt:'🏢',farm:'🌱',galley:'🍲',o2:'💨',lab:'🔬',repair:'🔧',med:'🏥',fab:'⚙️',academy:'🎓',trade:'💰',garden:'🌳',port:'🚀',sky:'🏙️',mall:'🛍️',amuse:'🎡',water:'🌊'};
+const SHORT={hall:'Command Dome',home:'Home',apt:'Tower',farm:'Farm',galley:'Food',o2:'Oxygen',lab:'Lab',repair:'Repairs',med:'Hospital',fab:'Factory',academy:'School',trade:'Market',garden:'Park',port:'Spaceport',sky:'Skyscraper',mall:'Mega Mall',amuse:'Theme Park',water:'Water Park'};
 const IQ0=[115,85,100,95,120,90,105,88,98,102,108];
 const POWERS={flight:'Flight',speed:'Super-speed',heal:'Healing touch',mind:'Super-genius',build:'Telekinesis',breath:'Air-maker'};
 const PK=Object.keys(POWERS);
@@ -364,7 +371,8 @@ const clk=()=>{const m=S.t%1440;return String(Math.floor(m/60)).padStart(2,'0')+
 const colById=id=>S.cols[id-1];
 const hallOf=id=>BM.get(colById(id).hall);
 const capOf=b=>b.prog>=1?TYPES[b.type].house:(b.prevCap||0);
-const isHousing=b=>b.type==='home'||b.type==='apt';
+const isHousing=b=>b.type==='home'||b.type==='apt'||b.type==='sky';
+const FUNB=['amuse','water','mall','garden','galley'];
 const works=b=>b.prog>=1&&b.cond>=10;
 const spOf=c=>SPECIES[c.sp];
 const nameOf=c=>`${c.fn} the ${spOf(c).one}`;
@@ -473,7 +481,7 @@ function leaveHome(c){if(c.home){const h=BM.get(c.home);if(h)h.res=h.res.filter(
 function leaveJob(c){if(c.job){const j=BM.get(c.job);if(j)j.wrk=j.wrk.filter(i=>i!==c.id);c.job=0}}
 function die(c,cause){
   leaveHome(c);leaveJob(c);const p=c.partner&&CM.get(c.partner);if(p)p.partner=0;
-  S.sp[c.sp].d++;S.deaths[cause]=(S.deaths[cause]||0)+1;
+  S.sp[c.sp].d++;S.deaths[cause]=(S.deaths[cause]||0)+1;S.deathLog=(S.deathLog||[]).concat([S.t]).slice(-40);
   if(c.patron){const pt=S.patrons.find(x=>x.cid===c.id);if(pt){pt.status='died';pt.diedDay=day()}}
   const col=colById(c.col);
   log(`${nameOf(c)} died of ${cause} on ${col.name}, age ${c.age}.`,'death',c.x,c.y,col.id);
@@ -499,7 +507,7 @@ function chooseGoal(c){
   if(c.hu<35&&col.food>=1){const g=nearestB(c,['galley']);if(g&&c.coins>=5)return{b:g.id,act:'eat',dur:40};return{b:bed.id,act:'eat',dur:30}}
   if(wk&&c.job&&h>=8&&h<17){const j=BM.get(c.job);if(j&&j.prog>=1)return{b:j.id,act:'work',dur:Math.min(90,Math.round((17-h)*60))}}
   if(wk&&c.age>=5&&c.age<18&&h>=8&&h<15){const a=nearestB(c,['academy']);if(a)return{b:a.id,act:'study',dur:60}}
-  if(c.fun<55&&h>=7&&h<21){const p=nearestB(c,['garden','galley']);if(p)return{b:p.id,act:'play',dur:50+((rand()*50)|0)}}
+  if(c.fun<55&&h>=7&&h<21){const p=nearestB(c,FUNB);if(p)return{b:p.id,act:'play',dur:50+((rand()*50)|0)}}
   if(c.age>=4&&h>=7&&h<21&&rand()<(c.fun<60?.6:.45)){const t=plazaTile(col,c);if(t!=null)return{tile:t,act:'hang',dur:90+((rand()*90)|0)}}
   if(rand()<.3&&h>=7&&h<21){const bs=colB(col).filter(b=>works(b)&&b.id!==bed.id);if(bs.length)return{b:pick(bs).id,act:'visit',dur:30}}
   return{b:bed.id,act:'home',dur:40};
@@ -549,7 +557,7 @@ function stepCitizen(c){
         const skilled=TYPES[b.type].skill===c.skill,m=(sp.workMul||1)*(c.skill==='worker'?1.5:1)*(c.pwOn&&c.pw==='speed'?2:1)*Math.max(.6,Math.min(1.6,(c.iq||100)/100))*(sp.night?1.25*(pc(colById(c.col)).nightBonus||1):1);if(b.type==='lab'||b.type==='academy')c.iq=(c.iq||100)+.0008;if(c.pwOn&&c.pw==='mind')S.research+=.08;
         b.on++;if(skilled)b.onSk++;b.out+=m*(skilled?(TYPES[b.type].f||1.5):1);break}
       case'heal':if(b.onSk>0){c.hp+=.3;if(c.hp>85)c.sick=0}else if(b.on>0){c.hp+=.12;if(c.hp>95)c.sick=0}else c.hp+=.03;break;
-      case'play':c.fun+=(b.type==='garden'?.45:.3)*(b.type==='garden'&&b.onSk>0?1.6:1)*(sp.funMul?1.2:1);break;
+      case'play':if(b.type==='mall'&&c.coins>=1){c.coins-=.05;S.credits+=.05}c.fun+=(b.type==='amuse'?.9:b.type==='water'?.8:b.type==='mall'?.55:b.type==='garden'?.45:.3)*(b.type==='garden'&&b.onSk>0?1.6:1)*(sp.funMul?1.2:1);break;
       case'study':c.fun+=.01;if(b.onSk>0){c.edu=(c.edu||0)+.01;c.iq=(c.iq||100)+.004}else c.iq=(c.iq||100)+.001;break;
       case'visit':c.fun+=.15;break;
       case'home':c.en+=.03;c.fun+=.05;break;
@@ -742,7 +750,7 @@ function council(){
     health:(cmp.health||0)*1.5,
     housing:(cmp.housing||0)+(S.cols.some(c=>housingCap(c)-colC(c).length<2)?10:0)+(S.cols.some(c=>housingCap(c)-colC(c).length<colC(c).length*.25+3)?6:0),
     jobs:(cmp.jobs||0)*.8,
-    fun:(cmp.fun||0)*.6,
+    fun:(cmp.fun||0)*.6+(S.credits>800&&pop>=28?5:0),
     school:(cmp.school||0)*.7,
     research:(S.tech<TECH.length&&labs<1+S.cols.length?6:0)+(S.tech<2&&labs<3?4:0),
     expand:(cmp.crowding||0)*.4+(crowded?12:0)+(pop>S.cols.length*40?8:0)+(cmp.lonely||0)*.1,
@@ -758,6 +766,9 @@ function council(){
   for(const a of S.c){if(!a.agent||!a.agent.goal)continue;
     if(acted.has(a.agent.goal)){a.agent.wins++;log(`Agent ${a.fn}'s plan worked: the council agreed to ${GOAL[a.agent.goal]}. Plans completed: ${a.agent.wins}.`,'agent',a.x,a.y,a.col);a.agent.goal=null}
     else if(day()-a.agent.since>=4){a.agent.goal=null}}
+  if(S.credits>1100){const big=S.cols.slice().sort((a,b)=>colC(b).length-colC(a).length)[0],bs=colB(big);
+    for(const t of(S.tech>=3?['amuse','mall','water','sky']:['amuse','water','mall'])){if(t==='sky'){const h=bs.find(b=>b.type==='apt'&&b.prog>=1);if(h&&!bs.some(b=>b.type==='sky'&&b.prog<1)){S.credits-=420;h.type='sky';h.prog=0;h.prevCap=12;h.cond=100;const tx=`${big.name}: a Hab Tower is being rebuilt into a SKYSCRAPER!`;log(tx,'build',h.x,h.y,big.id);mins.push(tx);break}continue}
+      if(!bs.some(b=>b.type===t)&&colC(big).length>=18){const r=build(t,big,'the colony is rich and wants something spectacular');if(r){mins.push(r);break}}}}
   if(!mins.length&&S.credits>450){const r=act(rand()<.5?'fun':'jobs');if(r)mins.push(r)}
   S.minutes={day:day(),items:mins.length?mins:['Not enough credits for new projects. Saving up.']};
   S.cmp={};for(const c of S.cols)c.cmp={};
@@ -778,15 +789,19 @@ function act(need){
   if(need==='health'){const col=topCol('health');if(S.b.some(b=>b.col===col.id&&b.type==='med'&&b.prog<1))return null;return build('med',col,'sick citizens have nowhere to go')}
   if(need==='housing'){
     const col=S.cols.slice().sort((a,b)=>(housingCap(a)-colC(a).length)-(housingCap(b)-colC(b).length))[0];
+    if(S.tech>=3&&colB(col).length>=22&&S.credits>=420){const h=colB(col).find(b=>b.type==='apt'&&b.prog>=1);
+      if(h){S.credits-=420;h.type='sky';h.prog=0;h.prevCap=12;h.cond=100;const t=`${col.name}: a Hab Tower is being rebuilt into a SKYSCRAPER for 40 citizens!`;log(t,'build',h.x,h.y,col.id);return t}}
     if(S.tech>=1&&colB(col).length>=12&&S.credits>=150){const h=colB(col).find(b=>b.type==='home'&&b.prog>=1);
       if(h){S.credits-=150;h.type='apt';h.prog=0;h.prevCap=4;h.cond=100;const t=`${col.name}: upgrading a Hab Pod into a Hab Tower.`;log(t,'build',h.x,h.y,col.id);return t}}
     return build('home',col,n('housing')?`${n('housing')} housing complaints`:'running out of beds');
   }
-  if(need==='jobs'){const col=topCol('jobs');const idle=colC(col).filter(c=>c.age>=18&&c.age<lifeOf(c)*.8&&!c.job);
+  if(need==='jobs'){const col=topCol('jobs');if(colC(col).length>=40&&!colB(col).some(b=>b.type==='mall')&&S.credits>=600)return build('mall',col,'a Mega Mall means lots of new jobs');const idle=colC(col).filter(c=>c.age>=18&&c.age<lifeOf(c)*.8&&!c.job);
     const cnt={};for(const c of idle){let t=SKILL_B[c.skill];if(t==='port'&&S.tech<2)t='trade';cnt[t]=(cnt[t]||0)+1}
     const t=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0];if(!t)return null;
     return build(t[0],col,`${idle.length} unemployed, mostly ${t[0]==='trade'?'traders and hard workers':SKILLS[Object.keys(SKILL_B).find(k=>SKILL_B[k]===t[0])].toLowerCase()+'s'}`)}
-  if(need==='fun'){const col=topCol('fun'),bs=colB(col);return build(bs.filter(b=>b.type==='garden').length<=bs.filter(b=>b.type==='galley').length?'garden':'galley',col,`${n('fun')} bored citizens`)}
+  if(need==='fun'){const col=topCol('fun'),bs=colB(col),np=colC(col).length,has=t=>bs.some(b=>b.type===t);
+    if(S.tech>=2&&np>=28){for(const t of['water','amuse','mall']){if(!has(t)&&S.credits>=TYPES[t].cost+80)return build(t,col,t==='mall'?'the colony wants somewhere to shop':'the colony needs something HUGE to do')}}
+    return build(bs.filter(b=>b.type==='garden').length<=bs.filter(b=>b.type==='galley').length?'garden':'galley',col,`${n('fun')} bored citizens`)}
   if(need==='school'){const col=S.cols.find(c=>!S.b.some(b=>b.col===c.id&&b.type==='academy')&&colC(c).some(k=>k.age>=5&&k.age<18));return col?build('academy',col,'kids need a classroom'):null}
   if(need==='research'){const col=S.cols[0];return build('lab',col,'research unlocks new technology')}
   if(need==='expand'){
@@ -831,6 +846,8 @@ function tick(){
       if(b.type==='farm')col.food+=(.045*b.out+.02)*(pc(col).farm||1);
       if(b.type==='lab')S.research+=.05*b.out;
       if(b.type==='trade')S.credits+=.06*b.out;
+      if(b.type==='mall')S.credits+=.09*b.out;
+      if(b.type==='amuse'||b.type==='water')S.credits+=.03*b.out;
       if(b.type==='repair')rp+=.35*b.out;
       if(b.type==='fab')boost+=.3*b.out;
     }
@@ -857,6 +874,7 @@ function tick(){
   const e=eraOf();if(e>S.era){S.era=e;log(`The colony's look just upgraded to Era ${e}: ${ERA[e]}. The citizens' own research made the world more detailed.`,'tech',24,21,S.view)}
   if(S.t%60===0)marketTick();
   if(S.t%240===120)dramaRoll();
+  if(S.t%60===45)resilience();
   if(S.t%60===30)villainTick();
   shipTick();
 }
@@ -907,14 +925,19 @@ function fx(o){if(catchingUp)return;o.t0=performance.now();FX.push(o);if(FX.leng
 function randOutside(col,f){const l=S.c.filter(c=>c.col===col.id&&!c.inB&&!c.transit&&!c.ctrl&&c.age>=4&&(!f||f(c)));return l.length?pick(l):null}
 function dramaCol(){const live=S.cols.filter(c=>colC(c).length>=4);return live.length?pick(live):S.cols[0]}
 const EVENTS={
-  meteor(col,by){const bs=S.b.filter(b=>b.col===col.id&&b.prog>=1&&b.type!=='hall');if(!bs.length)return;const b=pick(bs);
-    fx({k:'meteor',col:col.id,x:b.x,y:b.y,dur:1400});b.cond=Math.min(b.cond,6);let dead=0;
+  meteor(col,by){
+    S.hits=(S.hits||[]).filter(t=>S.t-t<180);
+    if(by&&S.hits.length>=2){fx({k:'shield',col:col.id,x:col.cx,y:col.cy,dur:2600});log(`${by}'s meteor bounced off the colony's PLANETARY SHIELD! (The shield recharges after a few game hours.)`,'party',col.cx,col.cy,col.id);sfx('zap');return}
+    const lifeline=t=>S.b.filter(x=>x.col===col.id&&x.type===t&&works(x)).length<=1;
+    const bs=S.b.filter(b=>b.col===col.id&&b.prog>=1&&b.type!=='hall'&&!((b.type==='o2'||b.type==='farm'||b.type==='repair')&&lifeline(b.type)));if(!bs.length)return;const b=pick(bs);S.hits.push(S.t);
+    col.scorch=(col.scorch||[]).concat([{x:b.x,y:b.y,t:S.t}]).slice(-12);shake=performance.now()+700;
+    fx({k:'meteor',col:col.id,x:b.x,y:b.y,dur:2200,seed:Math.random()*1000});b.cond=Math.min(b.cond,6);let dead=0;
     for(const c of S.c.slice())if(c.col===col.id&&!c.inB&&!c.transit&&!c.ctrl&&Math.hypot(c.x-b.x,c.y-b.y)<1.6&&rand()<.5){c.cause='a meteor strike';c.hp=0;dead++}
     log(`${by?by+' sent a METEOR! ':'METEOR STRIKE! '}A meteor smashed into the ${TYPES[b.type].name} on ${col.name}${dead?` and ${dead} citizen${dead>1?'s':''} didn't make it`:'. Nobody was hurt'}.`,'disaster',b.x,b.y,col.id);sfx('boom')},
   ufo(col,by){const c=randOutside(col);if(!c)return;fx({k:'ufo',col:col.id,cid:c.id,x:c.x,y:c.y,dur:4200});
     setTimeout(()=>{if(!CM.has(c.id))return;leaveJob(c);c.transit=1;c.inB=0;c.path=null;c.abd=day()+2+((rand()*3)|0);c.act='flying'},2600);
     log(`${by?by+' called the aliens! ':''}A UFO appeared over ${col.name} and BEAMED UP ${nameOf(c)}! Nobody knows if they'll come back.`,'disaster',c.x,c.y,col.id);sfx('ufo')},
-  plague(col,by){const n=colC(col).filter(c=>!c.sick&&rand()<.35);for(const c of n)c.sick=1;
+  plague(col,by){if(by&&S.t-(S.lastPlague||-9999)<360){log(`The Med Bay's vaccine shield stopped ${by}'s plague! (Plagues have a cooldown.)`,'party',col.cx,col.cy,col.id);return}S.lastPlague=S.t;const n=colC(col).filter(c=>!c.sick&&rand()<.35);for(const c of n)c.sick=1;
     log(`${by?by+' unleashed a plague! ':''}A space plague is spreading on ${col.name}. ${n.length} citizens fell sick.${S.b.some(b=>b.col===col.id&&b.type==='med')?'':' There is no Med Bay!'}`,'disaster',col.cx,col.cy,col.id);sfx('alarm')},
   crystal(col,by){const c=randOutside(col);S.credits+=250;for(const x of colC(col))x.fun=Math.min(100,x.fun+20);fx({k:'spark',col:col.id,x:c?c.x:col.cx,y:c?c.y:col.cy,dur:3000});
     log(`${by?'Thanks to '+by+', ':''}${c?c.fn+' the '+spOf(c).one:'A miner'} struck a giant space crystal on ${col.name}! +250 credits for the colony.`,'party',c?c.x:col.cx,c?c.y:col.cy,col.id);sfx('chime')},
@@ -953,6 +976,22 @@ function dailyDrama(){
   if(S.feud&&day()>=S.feud.until){log(`Peace treaty! The ${SPECIES[S.feud.a].many} and ${SPECIES[S.feud.b].many} shook hands (and tentacles).`,'party',24,21,S.view);S.feud=null}
 }
 const INSULTS=[["Your species smells like burnt toast.","At least we don't leave slime on the doorknobs!"],["Get out of our plaza!","It's a public plaza, genius."],["You took the best pod!","Finders keepers!"],["Your kind can't even build a fence.","We built HALF this colony!"],["Nice face. Did a meteor hit it?","Nice manners. Did you have any?"]];
+
+/* ---------- life finds a way ---------- */
+let shake=0;
+function rubblingIdx(){if(S.rubIdx!=null&&SPECIES[S.rubIdx])return S.rubIdx;
+  const def={one:'Rubbling',many:'Rubblings',color:'#a8957a',hunger:.7,life:120,fert:1.3,o2:.6,ill:.2,workMul:1.2,from:[0,9],iq0:96,born:day(),perk:'Rock creatures that crawl out of rubble after disasters. Natural fixers.',relax:'Napping in a nice pile of gravel.',lines:['Rocks are just slow friends.','I was a wall once. Now I am a guy.']};
+  S.rubIdx=addSpecies(def);return S.rubIdx}
+function resilience(){
+  const recent=(S.deathLog||[]).filter(t=>S.t-t<720).length,broken=S.b.filter(b=>b.prog>=1&&b.cond<10).length;
+  if((recent>=4||broken>=6||S.c.length<14)&&S.t-(S.lastSprout||-9999)>1440){S.lastSprout=S.t;
+    const col=S.cols.slice().sort((a,b)=>S.b.filter(x=>x.col===b.id&&x.cond<10).length-S.b.filter(x=>x.col===a.id&&x.cond<10).length)[0];
+    const wreck=S.b.find(b=>b.col===col.id&&b.cond<10)||hallOf(col.id),first=S.rubIdx==null,sp=rubblingIdx(),n=3+((rand()*3)|0),names=[];
+    for(let k=0;k<n;k++){const c=newCitizen(col,sp,rand()<.5?'f':'m',18+((rand()*10)|0),'fixer');c.x=wreck.x;c.y=wreck.y;c.inB=0;findHome(c);names.push(c.fn)}
+    fx({k:'spark',col:col.id,x:wreck.x,y:wreck.y,dur:4000});
+    log(first?`LIFE FINDS A WAY! From the rubble on ${col.name}, strange rock creatures crawled out: the RUBBLINGS! ${names.join(', ')} immediately started fixing things.`:`More Rubblings crawled out of the ruins on ${col.name}: ${names.join(', ')}. The colony will rebuild.`,'species',wreck.x,wreck.y,col.id)}
+}
+const SMOKE=(px,py,t,seed,big)=>{for(let i=0;i<(big?7:4);i++){const ph=((t/1400+i/(big?7:4)+seed)%1),x=px+8+Math.sin(ph*6+i+seed)*3+ph*6,y=py+4-ph*(big?40:26);ctx.fillStyle=`rgba(${60+i*8},${60+i*8},${70+i*8},${(1-ph)*.55})`;ctx.beginPath();ctx.arc(x,y,2+ph*(big?9:6),0,7);ctx.fill()}};
 
 /* ---------- music & sound ---------- */
 let AC=null,MG=null,REC_DEST=null,musicOn=false,mood='calm',musT=0;
@@ -1010,18 +1049,33 @@ function quickReplyOld(c,q){const ql=q.toLowerCase(),sp=spOf(c);
   if(/love|partner|date/.test(ql)){const p=c.partner&&CM.get(c.partner);return p?`${p.fn} is my everything. Well, ${p.fn} and snacks.`:`Still single. Know any nice ${sp.many}?`}
   if(/job|work/.test(ql))return`I'm a ${SKILLS[c.skill].toLowerCase()}. ${TH.skill[c.skill]}`;if(/hi|hello|hey/.test(ql))return pick([`Hi! I'm ${c.fn}.`,'Oh! A voice from the sky!','Hello, mysterious stranger.']);
   return pick(TH.funny)}
+function talkCam(){return cam.talkUntil&&performance.now()<cam.talkUntil}
+const EMO={nice:['❤️','😊','🥰','🤩'],mean:['💢','😢','😠','😤'],joke:['😂','🤣'],q:['❓','😮','🤔','💬']};
+function startTalk(c){
+  if(c.transit)return;
+  if(c.inB&&!c.ctrl){const b=BM.get(c.inB),col=colById(c.col);let spot=null;for(const[dx,dy]of[[0,1],[1,0],[-1,0],[0,-1],[1,1],[-1,1]]){const x=b.x+dx,y=b.y+dy;if(inb(x,y)&&col.tiles[idx(x,y)]!==1&&!BMS.get(col.id)[idx(x,y)]){spot=[x,y];break}}
+    c.inB=0;c.x=spot?spot[0]:b.x;c.y=spot?spot[1]:b.y+.6}
+  if(!c.ctrl){c.path=null;c.goal=null;c.act='hang';c.until=S.t+120}
+  if(!(G&&G.on)){if(c.col!==S.view)setView(c.col,true);setCam('follow');cam.fcid=c.id}cam.talkUntil=performance.now()+14000;
+}
+function react(c,kind){c.emo={t:pick(EMO[kind]||EMO.q),until:performance.now()+4500};c.jump=performance.now()+1200}
 async function talkTo(c,q,el){
-  const L=talkLog.get(c.id)||[];L.push({me:1,t:q});talkLog.set(c.id,L);renderTalk(c,el);moodFrom(c,q);
-  if(!SAMPLE){const a2=quickReply(c,q);L.push({t:a2});bubbles.push({cid:c.id,txt:a2,from:performance.now()+1500,until:performance.now()+8000});renderTalk(c,el);return}
+  startTalk(c);
+  const L=talkLog.get(c.id)||[];L.push({me:1,t:q});talkLog.set(c.id,L);renderTalk(c,el);const md=moodFrom(c,q);
+  react(c,/joke|funny|haha|lol/i.test(q)?'joke':md>5?'nice':md<0?'mean':'q');
+  bubbles=bubbles.filter(b=>b.cid!==c.id);bubbles.push({cid:c.id,txt:'…',until:performance.now()+2500});
+  if(!SAMPLE){const a2=quickReply(c,q);L.push({t:a2});setTimeout(()=>{bubbles=bubbles.filter(b=>b.cid!==c.id);bubbles.push({cid:c.id,txt:a2,until:performance.now()+8000});react(c,md>5?'nice':md<0?'mean':'q')},900);renderTalk(c,el);return}
   const p=c.partner&&CM.get(c.partner),hm=c.home&&BM.get(c.home),jb=c.job&&BM.get(c.job),sp=spOf(c);
   const ctx=`You are ${c.fn}, a ${c.age}-year-old ${c.sex==='f'?'female':'male'} ${sp.one} (${sp.perk}) living on the planet ${colById(c.col).name} in the Starhaven space colony. Skill: ${SKILLS[c.skill]}. IQ ${Math.round(c.iq||100)}. Job: ${jb?TYPES[jb.type].name:'none'}. Home: ${hm?TYPES[hm.type].name:'none'}. Partner: ${p?p.fn+' the '+spOf(p).one:'none'}. Mood ${Math.round(c.hap)}/100, health ${Math.round(c.hp)}, hunger ${Math.round(100-c.hu)}/100. ${c.pwOn?'Superpower: '+POWERS[c.pw]+'.':''} ${c.villain?'You are secretly the saboteur. Never admit it, but be shifty.':''} Right now you are ${(ACT[c.act]||c.act).toLowerCase()} and thinking: "${c.th}". Latest colony news: ${S.headline||'nothing big'}.
 A voice from the sky (a viewer of the live stream) is talking to you. Reply in character in 1-2 short, funny, family-friendly sentences. If they are kind, be delighted. If they are mean, be a little hurt but witty. No narration, just your words.`;
   const msgs=[{role:'user',content:ctx+'\n\nThe voice says: '+L[0].t}];for(let i=1;i<L.length;i++)msgs.push({role:L[i].me?'user':'assistant',content:L[i].t});
   const ans={t:'…'};L.push(ans);renderTalk(c,el);
   try{const r=await SAMPLE(msgs,{modelTier:'quick',cache:false,onText:({text})=>{ans.t=text;renderTalk(c,el)}});ans.t=r.text;
-    bubbles.push({cid:c.id,txt:r.text.slice(0,120),until:performance.now()+7000});if(rand()<.5)log(`${c.fn} the ${sp.one} to a voice from the sky: "${r.text.slice(0,140)}"`,'chat',c.x,c.y,c.col)}
-  catch(e){ans.t=quickReply(c,q)}renderTalk(c,el)}
-function renderTalk(c,el){const box=el&&el.querySelector('.msgs');if(!box)return;const L=talkLog.get(c.id)||[];box.innerHTML=L.map(m=>`<div class="m ${m.me?'me':'them'}"></div>`).join('');[...box.children].forEach((d,i)=>d.textContent=L[i].t);box.scrollTop=box.scrollHeight}
+    bubbles=bubbles.filter(b=>b.cid!==c.id);bubbles.push({cid:c.id,txt:r.text.slice(0,140),until:performance.now()+9000});react(c,md>5?'nice':md<0?'mean':'q');if(rand()<.5)log(`${c.fn} the ${sp.one} to a voice from the sky: "${r.text.slice(0,140)}"`,'chat',c.x,c.y,c.col)}
+  catch(e){ans.t=quickReply(c,q);bubbles=bubbles.filter(b=>b.cid!==c.id);bubbles.push({cid:c.id,txt:ans.t,until:performance.now()+8000})}renderTalk(c,el)}
+function restoreTalk(root){const t=root&&root.querySelector('.talk[data-talk]');if(t){const c=CM.get(+t.dataset.talk);if(c)renderTalk(c)}}
+function renderTalk(c,el){for(const t of document.querySelectorAll(`.talk[data-talk="${c.id}"]`))renderTalkInto(c,t)}
+function renderTalkInto(c,el){const box=el&&el.querySelector('.msgs');if(!box)return;const L=talkLog.get(c.id)||[];box.innerHTML=L.map(m=>`<div class="m ${m.me?'me':'them'}"></div>`).join('');[...box.children].forEach((d,i)=>d.textContent=L[i].t);box.scrollTop=box.scrollHeight}
 
 /* ---------- powers, agents, market, patrons ---------- */
 function eraOf(){return S.tech>=4?3:S.tech>=2?2:1}
@@ -1153,8 +1207,9 @@ function adaptOf(sp,p){S.adp=S.adp||{};const k=sp+'@'+p;if(S.adp[k]!=null)return
 function iqStr(i){const h=(S.iqH&&S.iqH[i])||[],v=S.iq?S.iq[i]:IQ0[i],old=h.length>3?h[h.length-4]:h[0]||v,d=Math.round(v-old);return`${Math.round(v)}${d>0?' ▲'+d:d<0?' ▼'+(-d):''}`}
 let spTick=0;const spOpen=new Set();
 const mini=(v,c)=>`<span class="mini"><i style="width:${Math.max(0,Math.min(100,Math.round(v)))}%;background:${c}"></i></span>${Math.round(v)}`;
+let spHover=false;
 function renderSpecies(){
-  const el=$('species');if(!el)return;
+  const el=$('species');if(!el||spHover)return;
   el.innerHTML=SPECIES.map((sp,i)=>{const al=S.c.filter(c=>c.sp===i).sort((a,b)=>b.age-a.age),bornN=S.sp[i].b,diedN=S.sp[i].d;
     const rows=al.map(c=>{const jb=c.job&&BM.get(c.job),p=c.partner&&CM.get(c.partner);
       const tags=(c.pwOn?'⚡'+POWERS[c.pw]+' ':'')+(c.agent?'◆Agent ':'')+(c.patron?'♛Patron':'');
@@ -1164,10 +1219,11 @@ function renderSpecies(){
       <div class="tw">${al.length?`<table class="ct"><tr><th>Name</th><th>Age</th><th>Skill</th><th>IQ</th><th>Health</th><th>Mood</th><th>Fed</th><th>Job</th><th>Planet</th><th>Partner</th><th>Doing</th><th>Special</th></tr>${rows}</table>`:'<div class="hint">No one left.</div>'}</div></details>`}).join('');
 }
 document.addEventListener('toggle',e=>{const d=e.target;if(!d.matches||!d.matches('details.sp'))return;const i=+d.dataset.sp;if(d.open)spOpen.add(i);else spOpen.delete(i)},true);
-document.addEventListener('click',e=>{const tr=e.target.closest&&e.target.closest('.ct tr[data-cid]');if(!tr)return;const c=CM.get(+tr.dataset.cid);if(!c||c.transit)return;
+setTimeout(()=>{const el=$('species');if(el){el.addEventListener('pointerenter',()=>spHover=true);el.addEventListener('pointerleave',()=>spHover=false)}},0);
+document.addEventListener('pointerdown',e=>{const tr=e.target.closest&&e.target.closest('.ct tr[data-cid]');if(!tr)return;const c=CM.get(+tr.dataset.cid);if(!c||c.transit)return;
   sel={k:'c',id:c.id};if(c.col!==S.view)setView(c.col,true);setCam('follow');cam.fcid=c.id;$('camDir').setAttribute('aria-pressed','false');updatePanel();$('stage').scrollIntoView({behavior:'smooth',block:'center'})});
 const SPR=new Map();
-const WIN={home:[[4,8,2,2],[10,8,2,2]],apt:[[4,4,2,2],[7,4,2,2],[10,4,2,2],[4,7,2,2],[7,7,2,2],[10,7,2,2],[4,10,2,1],[10,10,2,1]],farm:[[2,6,12,1]],galley:[[3,8,5,3]],o2:[[7,4,2,1]],lab:[[5,6,2,2],[9,6,2,2]],repair:[[3,6,2,1]],med:[[3,8,2,2],[11,8,2,2]],fab:[[3,7,2,2],[7,7,2,2]],academy:[[3,8,2,2],[11,8,2,2]],trade:[[6,8,4,2]],garden:[[3,3,1,1],[11,4,1,1]],port:[[7,3,2,1]],hall:[[4,6,2,2],[10,6,2,2],[7,5,2,2]]};
+const WIN={sky:[[3,1,2,1],[6,1,2,1],[9,1,2,1],[3,4,2,1],[6,4,2,1],[9,4,2,1],[3,7,2,1],[6,7,2,1],[9,7,2,1],[3,10,2,1],[9,10,2,1]],mall:[[2,8,12,3]],amuse:[[3,2,1,1],[7,0,1,1],[11,2,1,1]],water:[[6,6,2,1]],home:[[4,8,2,2],[10,8,2,2]],apt:[[4,4,2,2],[7,4,2,2],[10,4,2,2],[4,7,2,2],[7,7,2,2],[10,7,2,2],[4,10,2,1],[10,10,2,1]],farm:[[2,6,12,1]],galley:[[3,8,5,3]],o2:[[7,4,2,1]],lab:[[5,6,2,2],[9,6,2,2]],repair:[[3,6,2,1]],med:[[3,8,2,2],[11,8,2,2]],fab:[[3,7,2,2],[7,7,2,2]],academy:[[3,8,2,2],[11,8,2,2]],trade:[[6,8,4,2]],garden:[[3,3,1,1],[11,4,1,1]],port:[[7,3,2,1]],hall:[[4,6,2,2],[10,6,2,2],[7,5,2,2]]};
 function sprite(b){
   const key=b.type+b.v;if(SPR.has(key))return SPR.get(key);
   const c=document.createElement('canvas');c.width=c.height=16;const g=c.getContext('2d');const P=(col,x,y,w=1,h=1)=>{g.fillStyle=col;g.fillRect(x,y,w,h)};
@@ -1187,6 +1243,10 @@ function sprite(b){
     case'academy':P('#e6c35a',2,6,12,8);P('#8f6cc0',1,4,14,2);P('#cfd4e2',12,0,1,4);P('#ffd35a',13,0,2,2);P(GL,3,8,2,2);P(GL,11,8,2,2);P('#6b4a2f',7,10,2,4);break;
     case'trade':P('#f2c94a',4,4,8,10);P('#f2c94a',2,8,12,6);P('#c9982a',6,2,4,2);P('#fff4c0',7,5,2,2);P(GL,6,8,4,2);P('#6b4a2f',7,11,2,3);break;
     case'garden':P('#4f8f5a',0,0,16,16);P('#7ad6a0',0,7,16,2);P('#4fd8d0',9,10,4,3);P('#3a2a52',3,6,1,4);P('#c87af0',1,2,5,4);P('#f0b8ff',2,3,2,1);P('#3a2a52',11,5,1,3);P('#7ad6f0',10,2,3,3);P('#cfd4e2',12,12,1,2);break;
+    case'sky':P('#7fa6c8',3,0,10,14);P('#a8d2ff',4,0,8,1);P('#5a7fa8',12,0,1,14);for(let y=1;y<13;y+=3)for(const x of[4,7,10])P(GL,x,y,2,2);P('#cfd4e2',7,0,1,1);P('#5a6278',6,12,3,2);break;
+    case'mall':P('#e3e6ef',0,5,16,9);P(st,0,4,16,2);P('#ef6a5a',3,1,10,3);P('#fff',4,2,1,1);P('#fff',6,2,1,1);P('#fff',8,2,1,1);P('#fff',10,2,1,1);P('#9fd8e8',2,8,12,3);P('#5a6278',7,11,2,3);P('#f2b24a',1,6,2,1);P('#f2b24a',13,6,2,1);break;
+    case'amuse':P('#4f8f5a',0,10,16,6);P('#cfd4e2',7,6,2,8);P('#ef6a5a',2,0,12,1);P('#ef6a5a',1,1,1,10);P('#ef6a5a',14,1,1,10);P('#ef6a5a',2,10,12,1);P('#f2b24a',7,5,2,2);P('#a99af2',0,12,16,1);P('#ffd35a',2,13,3,2);P('#62c6b2',11,13,3,2);break;
+    case'water':P('#9fd8e8',0,0,16,16);P('#3fa0e0',2,5,12,9);P('#7fd0ff',3,6,4,2);P('#f2b24a',1,0,2,9);P('#ef6a5a',3,1,3,1);P('#ef6a5a',6,2,2,1);P('#ef6a5a',8,3,2,2);P('#62c6b2',12,0,2,7);P('#fff',9,8,1,1);P('#fff',5,11,1,1);break;
     case'port':P('#5a6278',0,8,16,6);P('#7a8098',1,9,14,4);P('#f2b24a',3,10,10,1);P('#f2b24a',3,12,10,1);P('#eef0f6',7,2,2,7);P('#e8735a',7,1,2,1);P('#e8735a',6,7,1,2);P('#e8735a',9,7,1,2);P(GL,7,3,2,1);break;
   }
   SPR.set(key,c);return c;
@@ -1224,7 +1284,7 @@ function updateCam(dt){
     if(!c||c.transit||(c.inB&&performance.now()-(cam.povIn||0)>4000)){if(c&&c.inB&&!cam.povIn){cam.povIn=performance.now()}else{povPick();c=CM.get(cam.fcid)}}
     if(c&&!c.inB)cam.povIn=0;
     if(c){if(c.col!==S.view)setView(c.col,true);const b=c.inB&&BM.get(c.inB);t={x:(b?b.x:c.x)*T+8,y:(b?b.y:c.y)*T+4,z:7*dpr}}}
-  if(cam.mode==='follow'){const c=CM.get(cam.fcid);if(c&&!c.transit){if(c.col!==S.view)setView(c.col,true);t={x:c.x*T+8,y:c.y*T+8,z:4*dpr}}else setCam('director')}
+  if(cam.mode==='follow'){const c=CM.get(cam.fcid);if(c&&!c.transit){if(c.col!==S.view)setView(c.col,true);t={x:c.x*T+8,y:c.y*T+2,z:(talkCam()&&c.id===cam.fcid?7:4)*dpr}}else setCam('director')}
   if(cam.mode==='director'){
     if(lastEvent&&performance.now()-lastEvent.rt<300&&lastEvent.x!=null){if(lastEvent.col&&lastEvent.col!==S.view)setView(lastEvent.col,true);cam.phase='close';cam.timer=7;cam.fcid=0;cam.fx=lastEvent.x;cam.fy=lastEvent.y;lastEvent.rt=0}
     cam.timer-=dt;
@@ -1234,11 +1294,11 @@ function updateCam(dt){
       else{cam.phase='fit';cam.timer=10;cam.cycle++;if(S.cols.length>1&&cam.cycle%2===0)setView(S.cols[(S.view)%S.cols.length].id,true)}
     }
     if(cam.phase==='fit')t=fitView();
-    else{const c=cam.fcid&&CM.get(cam.fcid);t=(c&&c.col===S.view&&!c.transit)?{x:c.x*T+8,y:c.y*T+8,z:3.6*dpr}:{x:cam.fx*T+8,y:cam.fy*T+8,z:3.2*dpr}}
+    else{const c=cam.fcid&&CM.get(cam.fcid);t=(c&&c.col===S.view&&!c.transit)?{x:c.x*T+8,y:c.y*T+8,z:(rec?5:3.6)*dpr}:{x:cam.fx*T+8,y:cam.fy*T+8,z:(rec?4.6:3.2)*dpr}}
   }
   if(!t)return;const k=RM?1:1-Math.pow(.15,dt);cam.x+=(t.x-cam.x)*k;cam.y+=(t.y-cam.y)*k;cam.z+=(t.z-cam.z)*k;
 }
-function bHeight(b){return(b.type==='garden'||b.type==='farm'||b.type==='port')?2:(b.type==='apt'||b.type==='fab'||b.type==='lab'||b.type==='hall')?10:6}
+function bHeight(b){return b.type==='sky'?24:b.type==='mall'?7:b.type==='amuse'?9:b.type==='water'?2:(b.type==='garden'||b.type==='farm'||b.type==='port')?2:(b.type==='apt'||b.type==='fab'||b.type==='lab'||b.type==='hall')?10:6}
 const SHADE=new Map();
 function shaded(b,era){
   const hg=era===3?bHeight(b):0,key=b.type+b.v+'e'+era;if(SHADE.has(key))return SHADE.get(key);
@@ -1281,7 +1341,8 @@ function draw(){
   ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#070914';ctx.fillRect(0,0,cw,ch);
   for(const s of stars){ctx.fillStyle=s[3];ctx.fillRect(s[0]*cw,s[1]*ch,s[2]*dpr,s[2]*dpr)}
   ctx.imageSmoothingEnabled=false;
-  const ox=cw/2-cam.x*z,oy=ch/2-cam.y*z;
+  const shk=shake>performance.now()?(shake-performance.now())/700*6*dpr:0;
+  const ox=cw/2-cam.x*z+(Math.random()-.5)*shk,oy=ch/2-cam.y*z+(Math.random()-.5)*shk;
   ctx.setTransform(z,0,0,z,ox,oy);
   ctx.fillStyle=BIOME[col.biome].dot+'30';ctx.fillRect(-3,-3,W*T+6,H*T+6);
   ctx.drawImage(TERR.get(col.id),0,0);
@@ -1289,20 +1350,32 @@ function draw(){
   if(era>=2){const g=ctx.createRadialGradient(W*T*.45,H*T*.4,40,W*T*.5,H*T*.5,W*T*.75);g.addColorStop(0,'rgba(255,240,210,'+(era===3?.14:.08)+')');g.addColorStop(1,'rgba(0,0,20,'+(era===3?.35:.2)+')');ctx.fillStyle=g;ctx.fillRect(0,0,W*T,H*T)}
   const occ=new Map();for(const c of S.c)if(c.inB&&c.col===col.id)occ.set(c.inB,(occ.get(c.inB)||0)+1);
   const blink=Math.floor(performance.now()/400)%2;
+  for(const sc2 of(col.scorch||[])){const age=(S.t-sc2.t)/1440;if(age>6)continue;ctx.fillStyle=`rgba(25,18,15,${.45*(1-age/6)})`;ctx.beginPath();ctx.ellipse(sc2.x*T+8,sc2.y*T+10,14,7,0,0,7);ctx.fill()}
   const blist=S.b.filter(b=>b.col===col.id).sort((a,b)=>a.y-b.y||a.x-b.x);
   for(const b of blist){const px=b.x*T,py=b.y*T;
     if(b.prog<1){ctx.fillStyle='#5d6278';ctx.fillRect(px+1,py+10,14,5);ctx.fillStyle='#f2b24a';ctx.fillRect(px+2,py+3,1,11);ctx.fillRect(px+13,py+3,1,11);ctx.fillRect(px+2,py+3,12,1);ctx.fillRect(px+2,py+8,12,1);
       ctx.fillStyle='#0009';ctx.fillRect(px+1,py+15,14,1);ctx.fillStyle='#62c6b2';ctx.fillRect(px+1,py+15,Math.max(1,14*b.prog),1);continue}
     drawB(b,px,py,era);
-    if(b.cond<10){ctx.fillStyle='#00000080';ctx.fillRect(px,py,T,T);if(blink){ctx.fillStyle='#ef6a5a';ctx.fillRect(px+7,py+1,2,5);ctx.fillRect(px+7,py+7,2,2)}}
+    if(b.type==='amuse'&&b.prog>=1&&b.cond>=10){const hg=era===3?bHeight(b):0,wx=px+8,wy=py-hg+5,an=performance.now()/1200;ctx.strokeStyle='#ffd35a';ctx.lineWidth=.6;ctx.beginPath();ctx.arc(wx,wy,5,0,7);ctx.stroke();
+      for(let i=0;i<6;i++){const a2=an+i*Math.PI/3;ctx.beginPath();ctx.moveTo(wx,wy);ctx.lineTo(wx+Math.cos(a2)*5,wy+Math.sin(a2)*5);ctx.stroke();ctx.fillStyle=['#ef6a5a','#62c6b2','#a99af2'][i%3];ctx.fillRect(wx+Math.cos(a2)*5-1,wy+Math.sin(a2)*5-1,2,2)}}
+    if(b.type==='water'&&b.prog>=1&&b.cond>=10){const tt=performance.now()/300;for(let i=0;i<4;i++){const sx=px+3+((i*5+tt)%10),sy=py+8+Math.sin(tt+i)*2;ctx.fillStyle='rgba(255,255,255,.8)';ctx.fillRect(sx,sy,1,1)}}
+    if(z>=1.6*dpr&&cam.mode!=='pov'){const hg=era===3?bHeight(b):0;ctx.font='6px sans-serif';ctx.fillText(ICON[b.type]||'',px+10,py-hg+4)}
+    if(z>=(b.type==='home'?4.6:2.8)*dpr&&cam.mode!=='pov'){const lb=SHORT[b.type]||'';ctx.font='bold 3.6px sans-serif';const tw=ctx.measureText(lb).width;ctx.fillStyle='rgba(7,9,20,.78)';ctx.fillRect(px+8-tw/2-1.5,py+16.2,tw+3,5);ctx.fillStyle='#ece9f4';ctx.textAlign='center';ctx.fillText(lb,px+8,py+20);ctx.textAlign='left'}
+    if(b.cond<10){const tq=performance.now();ctx.fillStyle='rgba(20,12,10,.55)';ctx.fillRect(px,py,T,T);
+      ctx.fillStyle='#5a4a40';ctx.fillRect(px+1,py+11,5,4);ctx.fillRect(px+8,py+12,6,3);ctx.fillStyle='#7a6a5a';ctx.fillRect(px+4,py+10,4,3);ctx.fillRect(px+11,py+10,3,2);
+      ctx.strokeStyle='rgba(0,0,0,.7)';ctx.lineWidth=.6;ctx.beginPath();ctx.moveTo(px+3,py+2);ctx.lineTo(px+6,py+6);ctx.lineTo(px+4,py+9);ctx.moveTo(px+12,py+3);ctx.lineTo(px+10,py+7);ctx.stroke();
+      for(let i=0;i<3;i++){const fl=Math.sin(tq/90+i*2+b.id)*1.2;ctx.fillStyle=i%2?'rgba(255,200,80,.9)':'rgba(255,110,40,.85)';ctx.beginPath();ctx.moveTo(px+4+i*4,py+11);ctx.lineTo(px+5.5+i*4,py+6+fl);ctx.lineTo(px+7+i*4,py+11);ctx.fill()}
+      SMOKE(px,py,tq,b.id*.37,false);if(blink){ctx.fillStyle='#ef6a5a';ctx.fillRect(px+13,py+1,2,2)}}
     else if(b.cond<50){ctx.fillStyle='#0009';ctx.fillRect(px+1,py+15,14,1);ctx.fillStyle=b.cond<30?'#ef6a5a':'#f2b24a';ctx.fillRect(px+1,py+15,14*b.cond/100,1)}
   }
   for(const c of S.c){if(c.inB||c.transit||c.col!==col.id)continue;const img=charSprite(c.sp,c.sex),sc=(c.age<12?.65:1)*(era===3?1.15:1),bob=c.path&&(S.t>>1)%2?1:0;
-    const cx=c.x*T+8,top=c.y*T+14-11*sc-bob;
+    const jmp=c.jump&&performance.now()<c.jump?Math.abs(Math.sin((c.jump-performance.now())/90))*4:0;
+    const cx=c.x*T+8,top=c.y*T+14-11*sc-bob-jmp;
     if(era>=2){ctx.fillStyle='#0006';ctx.beginPath();ctx.ellipse(cx+(era===3?2:0),c.y*T+14.5,4*sc,1.5,0,0,7);ctx.fill()}else{ctx.fillStyle='#0005';ctx.fillRect(c.x*T+4,c.y*T+14,8*sc,1)}
     if(c.pwOn){const pulse=.5+.5*Math.sin(performance.now()/250+c.id);ctx.fillStyle=`rgba(255,211,90,${.18+.22*pulse})`;ctx.beginPath();ctx.ellipse(cx,top+5.5*sc,7*sc,8*sc,0,0,7);ctx.fill()}
     ctx.drawImage(img,cx-4.5*sc,top,9*sc,11*sc);
     if(c.pwOn&&((performance.now()/180+c.id)|0)%4===0){ctx.fillStyle='#fff6c8';ctx.fillRect(cx+4*sc,top,1,1)}
+    if(c.emo&&c.emo.until>performance.now()){const k=1-(c.emo.until-performance.now())/4500;ctx.font='7px sans-serif';ctx.textAlign='center';ctx.globalAlpha=Math.min(1,(1-k)*4);ctx.fillText(c.emo.t,cx,top-4-Math.min(1,k*6)*4);ctx.globalAlpha=1;ctx.textAlign='left'}
     if(c.agent){ctx.fillStyle='#b48cf0';ctx.fillRect(cx-1,top-4,2,1);ctx.fillRect(cx-2,top-3,4,1);ctx.fillRect(cx-1,top-2,2,1)}
     else if(c.patron){ctx.fillStyle='#ffd35a';ctx.fillRect(cx-2,top-3,5,1);ctx.fillRect(cx-2,top-4,1,1);ctx.fillRect(cx,top-4,1,1);ctx.fillRect(cx+2,top-4,1,1)}}
   const now=performance.now();launches=launches.filter(l=>now-l.rt<2600);
@@ -1312,8 +1385,17 @@ function draw(){
   const a=darkness();
   const drawFX=()=>{const nowT=performance.now();FX=FX.filter(f=>nowT-f.t0<f.dur);
     for(const f of FX){if(f.col!==col.id)continue;const p=(nowT-f.t0)/f.dur,cx=f.x*T+8,cy=f.y*T+8;
-      if(f.k==='meteor'){if(p<.55){const q=p/.55,sx=cx-260*(1-q),sy=cy-320*(1-q);ctx.strokeStyle='rgba(255,180,80,.6)';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(sx-60,sy-75);ctx.lineTo(sx,sy);ctx.stroke();ctx.fillStyle='#fff2c8';ctx.beginPath();ctx.arc(sx,sy,5,0,7);ctx.fill()}
-        else{const q=(p-.55)/.45;ctx.fillStyle=`rgba(255,150,60,${1-q})`;ctx.beginPath();ctx.arc(cx,cy,8+q*40,0,7);ctx.fill();ctx.fillStyle=`rgba(255,240,200,${.8*(1-q)})`;ctx.beginPath();ctx.arc(cx,cy,4+q*18,0,7);ctx.fill()}}
+      if(f.k==='meteor'){const IMP=.38;
+        if(p<IMP){const q=p/IMP,sx=cx-300*(1-q),sy=cy-360*(1-q);for(let i=0;i<10;i++){const tq=Math.max(0,q-i*.03);ctx.fillStyle=`rgba(255,${140+i*10},60,${.5-i*.045})`;ctx.beginPath();ctx.arc(cx-300*(1-tq),cy-360*(1-tq),7-i*.5,0,7);ctx.fill()}
+          ctx.fillStyle='#fff6d8';ctx.beginPath();ctx.arc(sx,sy,6,0,7);ctx.fill();ctx.fillStyle='rgba(255,90,40,.18)';ctx.beginPath();ctx.ellipse(cx,cy+6,14*q,5*q,0,0,7);ctx.fill()}
+        else{const q=(p-IMP)/(1-IMP);
+          if(q<.15){ctx.fillStyle=`rgba(255,255,240,${.9*(1-q/.15)})`;ctx.fillRect(cx-90,cy-90,180,180)}
+          ctx.strokeStyle=`rgba(255,220,160,${1-q})`;ctx.lineWidth=3*(1-q)+.5;ctx.beginPath();ctx.ellipse(cx,cy+4,10+q*70,4+q*28,0,0,7);ctx.stroke();
+          const fb=Math.max(0,1-q*1.6);ctx.fillStyle=`rgba(255,120,40,${fb})`;ctx.beginPath();ctx.arc(cx,cy-q*20,10+q*26,0,7);ctx.fill();ctx.fillStyle=`rgba(255,220,120,${fb})`;ctx.beginPath();ctx.arc(cx,cy-q*20,5+q*14,0,7);ctx.fill();
+          for(let i=0;i<18;i++){const a2=(i*137.5+(f.seed||0))%360*Math.PI/180,sp2=24+(i*13%30),dx=Math.cos(a2)*sp2*q*2.2,dy=-Math.abs(Math.sin(a2))*sp2*q*2.4+q*q*90;ctx.fillStyle=i%3?`rgba(90,80,70,${1-q})`:`rgba(255,160,60,${1-q})`;ctx.fillRect(cx+dx-1.5,cy+dy-1.5,3,3)}
+          SMOKE(cx-8,cy-6,nowT,f.seed||0,true)}}
+      if(f.k==='shield'){const r=60+p*40;ctx.strokeStyle=`rgba(120,220,255,${.9*(1-p)})`;ctx.lineWidth=3;ctx.beginPath();ctx.arc(cx,cy,r,Math.PI,0);ctx.stroke();ctx.fillStyle=`rgba(120,220,255,${.12*(1-p)})`;ctx.beginPath();ctx.arc(cx,cy,r,Math.PI,0);ctx.fill();
+        if(p<.4){const q=p/.4;ctx.fillStyle='#fff6d8';ctx.beginPath();ctx.arc(cx-200+q*150,cy-300+q*230-(q>.9?(q-.9)*400:0),5,0,7);ctx.fill()}}
       if(f.k==='ufo'){const c=CM.get(f.cid),tx=c&&!c.transit?c.x*T+8:cx,ty=c&&!c.transit?c.y*T+8:cy,hy=ty-70+Math.sin(nowT/200)*3;
         if(p>.15&&p<.8){ctx.fillStyle='rgba(140,255,200,.28)';ctx.beginPath();ctx.moveTo(tx-6,hy+6);ctx.lineTo(tx+6,hy+6);ctx.lineTo(tx+14,ty+8);ctx.lineTo(tx-14,ty+8);ctx.fill()}
         ctx.fillStyle='#9aa4c0';ctx.beginPath();ctx.ellipse(tx,hy,18,6,0,0,7);ctx.fill();ctx.fillStyle='#bfe8ff';ctx.beginPath();ctx.ellipse(tx,hy-4,8,6,0,Math.PI,0);ctx.fill();
@@ -1403,7 +1485,7 @@ function clickAt(e){
   updatePanel();
 }
 let popAt={x:0,y:0},popOpen=false;
-const BDESC={hall:'The Command Dome. The council meets here every morning at 06:00 to decide what to build next.',home:'A Hab Pod. Home for up to 4 citizens.',apt:'A Hab Tower. Apartments for up to 12 citizens.',farm:'Grows food for the whole planet. Farmers make it far more productive.',galley:'Cooks meals for 5 coins. A chef makes the food filling and fun.',o2:'Makes the oxygen everyone breathes. If these stop, citizens suffocate.',lab:'Scientists research new technology here. Geniuses work fastest.',repair:'Fixers keep every building from breaking down.',med:'Heals sick citizens. A medic heals much faster.',fab:'Engineers build parts that speed up all construction.',academy:'Kids learn here. Teachers make the next generation smarter.',trade:'Earns credits for the colony. Traders and leaders earn the most.',garden:'A place to relax. Artists make it even more fun.',port:'Launches shuttles and colony ships to other planets. Pilots make trips faster.'};
+const BDESC={sky:'A Skyscraper. Homes for 40 citizens. Needs advanced tech.',mall:'A Mega Mall. 8 jobs, shopping, and lots of credits for the colony.',amuse:'An Amusement Park with a giant Ferris wheel. The most fun anyone can have.',water:'A Water Park with slides. Huge fun boost, especially on hot planets.',hall:'The Command Dome. The council meets here every morning at 06:00 to decide what to build next.',home:'A Hab Pod. Home for up to 4 citizens.',apt:'A Hab Tower. Apartments for up to 12 citizens.',farm:'Grows food for the whole planet. Farmers make it far more productive.',galley:'Cooks meals for 5 coins. A chef makes the food filling and fun.',o2:'Makes the oxygen everyone breathes. If these stop, citizens suffocate.',lab:'Scientists research new technology here. Geniuses work fastest.',repair:'Fixers keep every building from breaking down.',med:'Heals sick citizens. A medic heals much faster.',fab:'Engineers build parts that speed up all construction.',academy:'Kids learn here. Teachers make the next generation smarter.',trade:'Earns credits for the colony. Traders and leaders earn the most.',garden:'A place to relax. Artists make it even more fun.',port:'Launches shuttles and colony ships to other planets. Pilots make trips faster.'};
 const chip=(c,sk)=>`<button class="chip${sk?' sk':''}" data-cid="${c.id}"><img src="${CHURL(c)}" alt="">${c.fn}${c.pwOn?' ⚡':''}</button>`;
 const CHC=new Map();function CHURL(c){const k=c.sp+c.sex;if(!CHC.has(k))CHC.set(k,charSprite(c.sp,c.sex).toDataURL());return CHC.get(k)}
 const BIMG=new Map();function bImg(b){const k=b.type+b.v;if(!BIMG.has(k))BIMG.set(k,sprite(b).toDataURL());return BIMG.get(k)}
@@ -1423,8 +1505,9 @@ function renderPop(h){
       ${inside.length?`<p>${inside.slice(0,3).map(c=>`${c.fn} is ${(ACT[c.act]||c.act).toLowerCase()}.`).join(' ')}</p>`:''}`}
   else if(sel.k==='c'&&CM.has(sel.id))html=h;
   else{el.hidden=true;return}
-  el.innerHTML='<button class="x" data-act="close" aria-label="Close">✕</button>'+html;el.hidden=false;
+  if(!el.contains(document.activeElement)){el.innerHTML='<button class="x" data-act="close" aria-label="Close">✕</button>'+html;restoreTalk(el)}el.hidden=false;
   const sr=stage.getBoundingClientRect(),w=el.offsetWidth,ht=el.offsetHeight;
+  if(talkCam()){el.style.left='auto';el.style.right='8px';el.style.top='8px';el.style.bottom='auto';return}el.style.right='auto';
   if(sr.width<520){el.style.left='8px';el.style.top='auto';el.style.bottom='56px'}
   else{let x=popAt.x+16,y=popAt.y-40;if(x+w>sr.width-8)x=popAt.x-w-16;el.style.left=Math.max(8,x)+'px';el.style.top=Math.max(8,Math.min(y,sr.height-ht-60))+'px';el.style.bottom='auto'}
 }
@@ -1476,7 +1559,7 @@ function updatePanel(){
     h=`<div class="who">${TYPES[b.type].name}</div><div class="meta">${colById(b.col).name} · ${b.prog<1?`under construction, ${Math.round(b.prog*100)}%`:b.cond<10?'<span style="color:var(--warn)">broken, needs a fixer</span>':`condition ${Math.round(b.cond)}%`}</div>
     ${isHousing(b)?`<div class="meta">Residents (${b.res.length}/${capOf(b)}): ${names(b.res)}</div>`:''}
     ${TYPES[b.type].jobs?`<div class="meta">Workers (${b.wrk.length}/${TYPES[b.type].jobs}): ${names(b.wrk)}</div><div class="meta">Best staffed by a ${SKILLS[TYPES[b.type].skill].toLowerCase()}.</div>`:''}`}
-  $('insp').innerHTML=h;
+  if(!$('insp').contains(document.activeElement)){$('insp').innerHTML=h;restoreTalk($('insp'))}
   renderPop(h);
   const lead=order[0],cap=housingCap(col);
   const H=[['Day',`${day()} · ${clk()}`],['Citizens',S.c.length],['Species',`${alive}/${SPECIES.length}`],['Planets',S.cols.length],['Leader',SPECIES[lead].many],['Era',ERA[S.era||1]],
@@ -1675,17 +1758,27 @@ function tryStartClip(){
   try{mr.start(1000)}catch(e){rec=null}
 }
 function cwrap(txt,max){const w=txt.split(' '),out=[];let l='';for(const s of w){const t=l?l+' '+s:s;if(cg.measureText(t).width>max&&l){out.push(l);l=s}else l=t}if(l)out.push(l);return out}
+const HOOK={disaster:'🚨 DISASTER!',death:'🪦 R.I.P.',birth:'👶 NEW BABY!',ship:'🚀 SHIP LAUNCH!',colony:'🪐 NEW WORLD!',tech:'🔬 BREAKTHROUGH!',power:'⚡ SUPERPOWER!',species:'🧬 NEW SPECIES!',election:'🗳️ ELECTION!',party:'🎉 CELEBRATION!',crisis:'⚠️ CRISIS!',milestone:'🏆 MILESTONE!'};
+const WHY={disaster:'Disasters can wreck the colony. Can they rebuild?',death:'Every death changes the race. If a species hits zero, it is gone forever.',birth:'More babies means a stronger species in the race to survive.',ship:'Ships carry settlers between planets so the species can spread.',colony:'Each planet has its own challenge. Only the toughest species thrive.',tech:'Smarter colonies build better, and the whole world gets an upgrade.',power:'Superpowered citizens can save the colony... or not.',species:'A brand-new species just joined the race to survive!',election:'The new Mayor decides what the colony builds next.',party:'Happy citizens work harder and have more kids.',crisis:'If they can\'t fix this fast, citizens will start dying.',milestone:'The colony keeps growing. Who will lead it?'};
+function hookOf(ev){if(/METEOR/i.test(ev.txt))return'☄️ METEOR STRIKE!';if(/UFO|abduct|BEAMED/i.test(ev.txt))return'🛸 ALIEN ABDUCTION!';if(/plague/i.test(ev.txt))return'🦠 PLAGUE!';if(/SABOTAGE|saboteur|CAUGHT/i.test(ev.txt))return'🕵️ SABOTEUR!';if(/Rubbling|LIFE FINDS/i.test(ev.txt))return'🪨 LIFE FINDS A WAY!';if(/oxygen/i.test(ev.txt))return'💨 RUNNING OUT OF AIR!';if(/food|starv|hungry/i.test(ev.txt))return'🍽️ FAMINE!';return HOOK[ev.kind]||'📺 STARHAVEN'}
 function composeClip(){
-  const W2=720,H2=1280;cg.fillStyle='#070914';cg.fillRect(0,0,W2,H2);
+  const W2=720,H2=1280,e=(performance.now()-rec.t0)/1000,ev=rec.ev;cg.fillStyle='#070914';cg.fillRect(0,0,W2,H2);
   const src=(G&&G.on)?G.r.domElement:cv;let sH=src.height,sW=sH*9/16;if(sW>src.width){sW=src.width;sH=sW*16/9}
-  cg.imageSmoothingEnabled=false;cg.drawImage(src,(src.width-sW)/2,(src.height-sH)/2,sW,sH,0,0,W2,H2);
-  const g=cg.createLinearGradient(0,0,0,200);g.addColorStop(0,'rgba(7,9,20,.95)');g.addColorStop(1,'rgba(7,9,20,0)');cg.fillStyle=g;cg.fillRect(0,0,W2,200);
-  cg.fillStyle='#ece9f4';cg.font='700 44px "Pixelify Sans", monospace';cg.textBaseline='top';cg.fillText(`STARHAVEN · DAY ${day()}`,36,44);
-  const l=leaderSp();cg.fillStyle='#ffd35a';cg.font='500 24px "JetBrains Mono", monospace';cg.fillText(`${S.c.length} citizens · leader: ${SPECIES[l].many}`,36,100);
-  cg.font='700 34px "Atkinson Hyperlegible", system-ui, sans-serif';const lines=cwrap(rec.ev.txt,620).slice(0,5),lh=44,bh=lines.length*lh+40,by=H2-bh-120;
-  cg.fillStyle='rgba(7,9,20,.92)';cg.strokeStyle='#ffd35a';cg.lineWidth=4;cg.beginPath();cg.roundRect(30,by,W2-60,bh,16);cg.fill();cg.stroke();
-  cg.fillStyle='#ece9f4';lines.forEach((t,i)=>cg.fillText(t,50,by+20+i*lh));
-  cg.fillStyle='#9aa1bf';cg.font='500 22px "JetBrains Mono", monospace';cg.fillText('Follow to see who survives',36,H2-80);
+  const zm=1+Math.min(1,e/14)*.12;cg.imageSmoothingEnabled=false;cg.save();cg.translate(W2/2,H2/2);cg.scale(zm,zm);cg.drawImage(src,(src.width-sW)/2,(src.height-sH)/2,sW,sH,-W2/2,-H2/2,W2,H2);cg.restore();
+  const g=cg.createLinearGradient(0,0,0,230);g.addColorStop(0,'rgba(7,9,20,.95)');g.addColorStop(1,'rgba(7,9,20,0)');cg.fillStyle=g;cg.fillRect(0,0,W2,230);
+  cg.textBaseline='top';cg.fillStyle='#ffd35a';cg.font='700 30px "Pixelify Sans", monospace';cg.fillText(`STARHAVEN · DAY ${day()} · ${(colById(ev.col)||colById(S.view)).name.toUpperCase()}`,32,34);
+  cg.fillStyle='#ece9f4';cg.font='700 52px "Pixelify Sans", monospace';cg.fillText(hookOf(ev),32,78);
+  const l=leaderSp();cg.fillStyle='#9aa1bf';cg.font='500 22px "JetBrains Mono", monospace';cg.fillText(`${S.c.length} alive · ${new Set(S.c.map(c=>c.sp)).size} species · leader: ${SPECIES[l].many}`,32,150);
+  if(e<2.2){const a=Math.min(1,(2.2-e)/.5);cg.fillStyle=`rgba(7,9,20,${.72*a})`;cg.fillRect(0,0,W2,H2);cg.globalAlpha=a;bigText(hookOf(ev),560,74,'#ffd35a',1);bigText('An AI colony nobody controls',680,32,'#ece9f4',1);cg.globalAlpha=1}
+  cg.textBaseline='top';cg.font='700 33px "Atkinson Hyperlegible", system-ui, sans-serif';const lines=cwrap(ev.txt,620).slice(0,5),lh=43;
+  cg.font='600 25px "Atkinson Hyperlegible", system-ui, sans-serif';const why=cwrap('Why it matters: '+(WHY[ev.kind]||WHY.milestone),620).slice(0,3);
+  const bh=lines.length*lh+why.length*33+86,by=H2-bh-110;
+  cg.fillStyle='rgba(7,9,20,.93)';cg.strokeStyle='#ffd35a';cg.lineWidth=4;cg.beginPath();cg.roundRect(30,by,W2-60,bh,18);cg.fill();cg.stroke();
+  cg.fillStyle='#ffd35a';cg.font='700 20px "JetBrains Mono", monospace';cg.fillText('WHAT HAPPENED',52,by+18);
+  cg.fillStyle='#ece9f4';cg.font='700 33px "Atkinson Hyperlegible", system-ui, sans-serif';lines.forEach((t,i)=>cg.fillText(t,52,by+48+i*lh));
+  cg.fillStyle='#62c6b2';cg.font='600 25px "Atkinson Hyperlegible", system-ui, sans-serif';why.forEach((t,i)=>cg.fillText(t,52,by+60+lines.length*lh+i*33));
+  if(e>12.5){const a=Math.min(1,(e-12.5)/.5);cg.fillStyle=`rgba(7,9,20,${.8*a})`;cg.fillRect(0,0,W2,H2);cg.globalAlpha=a;bigText('What happens next?',520,58,'#ffd35a',1);bigText('Follow for the next episode',620,34,'#ece9f4',1);bigText('🔴 Talk to them LIVE · link in bio',690,30,'#ef6a5a',1);cg.globalAlpha=1}
+  else{cg.fillStyle='#9aa1bf';cg.font='500 22px "JetBrains Mono", monospace';cg.fillText('Talk to them LIVE · link in bio',32,H2-78)}
 }
 async function finishClip(blob,meta){
   if(!blob.size)return;
@@ -1772,9 +1865,9 @@ function renderPatrons(){
 
 /* ---------- first-person 3D ---------- */
 let G=null;
-const H3={hall:1.5,home:.9,apt:2.2,farm:.14,galley:.9,o2:1.2,lab:1.4,repair:1,med:1,fab:1.4,academy:1.1,trade:1.2,garden:.08,port:.12};
-const FLAT=new Set(['farm','garden','port']);
-const ROOF={hall:'#9fd8e8',home:'#d9dde8',apt:'#9aa0b8',galley:'#5a6278',o2:'#7fb6f0',lab:'#eef0f6',repair:'#7a6a55',med:'#c9cde0',fab:'#454a5e',academy:'#8f6cc0',trade:'#c9982a'};
+const H3={sky:5,mall:1.6,amuse:.2,water:.08,hall:1.5,home:.9,apt:2.2,farm:.14,galley:.9,o2:1.2,lab:1.4,repair:1,med:1,fab:1.4,academy:1.1,trade:1.2,garden:.08,port:.12};
+const FLAT=new Set(['farm','garden','port','amuse','water']);
+const ROOF={sky:'#a8d2ff',mall:'#ef6a5a',hall:'#9fd8e8',home:'#d9dde8',apt:'#9aa0b8',galley:'#5a6278',o2:'#7fb6f0',lab:'#eef0f6',repair:'#7a6a55',med:'#c9cde0',fab:'#454a5e',academy:'#8f6cc0',trade:'#c9982a'};
 function load3D(){return new Promise((res,rej)=>{if(window.THREE)return res();const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';s.onload=res;s.onerror=rej;document.head.appendChild(s)})}
 function texOf(canvas,key){let t=G.tex.get(key);if(!t){t=new THREE.CanvasTexture(canvas);t.magFilter=THREE.NearestFilter;t.minFilter=THREE.NearestFilter;t.encoding=THREE.sRGBEncoding;G.tex.set(key,t)}return t}
 function init3D(){
@@ -1827,6 +1920,11 @@ function bMesh(b){
   if(b.type==='port'){const rk=new THREE.Mesh(new THREE.CylinderGeometry(.08,.12,.7,10),new THREE.MeshStandardMaterial({color:0xeef0f6,roughness:.4}));rk.position.y=.4;rk.castShadow=true;const nose=new THREE.Mesh(new THREE.ConeGeometry(.08,.2,10),new THREE.MeshStandardMaterial({color:0xe8735a}));nose.position.y=.85;m.add(rk,nose)}
   if(b.type==='hall'){const dome=new THREE.Mesh(new THREE.SphereGeometry(.42,24,12,0,Math.PI*2,0,Math.PI/2),new THREE.MeshStandardMaterial({color:0x9fd8e8,roughness:.15,metalness:.2,transparent:true,opacity:.8}));dome.position.y=h/2;m.add(dome)}
   if(b.type==='o2'){for(const dx of[-.22,.22]){const t=new THREE.Mesh(new THREE.CylinderGeometry(.16,.16,h+.3,14),new THREE.MeshStandardMaterial({color:0x7fb6f0,roughness:.3}));t.position.set(dx,.15,0);t.castShadow=true;m.add(t)}}
+  if(b.type==='amuse'){const wh=new THREE.Mesh(new THREE.TorusGeometry(.38,.03,6,24),new THREE.MeshStandardMaterial({color:0xffd35a,emissive:0x553300}));wh.position.set(0,.55,0);wh.userData.spin=1;
+    for(let i=0;i<8;i++){const cab=new THREE.Mesh(new THREE.BoxGeometry(.08,.08,.08),new THREE.MeshStandardMaterial({color:[0xef6a5a,0x62c6b2,0xa99af2][i%3]}));const a2=i/8*Math.PI*2;cab.position.set(Math.cos(a2)*.38,Math.sin(a2)*.38,0);wh.add(cab)}
+    const leg=new THREE.Mesh(new THREE.CylinderGeometry(.03,.05,.55,6),new THREE.MeshStandardMaterial({color:0xcfd4e2}));leg.position.y=.28;m.add(wh,leg);m.userData.wheel=wh}
+  if(b.type==='water'){const sl=new THREE.Mesh(new THREE.TorusGeometry(.25,.05,6,16,Math.PI*1.3),new THREE.MeshStandardMaterial({color:0xef6a5a}));sl.position.set(-.1,.3,0);sl.rotation.y=.6;const tw2=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,.6,8),new THREE.MeshStandardMaterial({color:0xf2b24a}));tw2.position.set(-.33,.3,0);m.add(sl,tw2)}
+  if(b.type==='sky'){const ant=new THREE.Mesh(new THREE.CylinderGeometry(.01,.02,.6,6),new THREE.MeshStandardMaterial({color:0xcfd4e2,emissive:0x330000}));ant.position.y=h/2+.3;m.add(ant)}
   if(b.type==='garden'){for(const [dx,dz,c] of[[-.25,-.2,0xc87af0],[.22,.15,0x7ad6f0]]){const tr=new THREE.Mesh(new THREE.SphereGeometry(.17,10,8),new THREE.MeshStandardMaterial({color:c,roughness:.8}));tr.position.set(dx,.42,dz);tr.castShadow=true;const tk=new THREE.Mesh(new THREE.CylinderGeometry(.03,.04,.35,6),new THREE.MeshStandardMaterial({color:0x3a2a52}));tk.position.set(dx,.2,dz);m.add(tr,tk)}}
   return m;
 }
@@ -1835,11 +1933,12 @@ function sync3D(col,night){
   for(const b of S.b){if(b.col!==col.id)continue;seen.add(b.id);let m=G.bm.get(b.id);
     if(m&&m.userData.type!==b.type){G.scene.remove(m);m=null}
     if(!m){m=bMesh(b);G.bm.set(b.id,m);G.scene.add(m)}
+    if(m.userData.wheel)m.userData.wheel.rotation.z=performance.now()/1400;
     const h=m.userData.h,pr=b.prog<1?Math.max(.06,b.prog):1;m.scale.y=pr;m.position.y=h*pr/2;
     const sd=m.userData.side;
     if(b.prog<1){sd.wireframe=true}else{sd.wireframe=false}
     const occ=night>0&&works(b)&&!FLAT.has(b.type);sd.emissive.setRGB(occ?night*.55:0,occ?night*.4:0,occ?night*.12:0);
-    if(b.prog>=1&&b.cond<10){const f=(performance.now()/300|0)%2;sd.emissive.setRGB(f?.5:.15,0,0)}}
+    if(b.prog>=1&&b.cond<10){const f=.5+.5*Math.sin(performance.now()/120+b.id);sd.emissive.setRGB(.35*f,.08*f,0);sd.color.setRGB(.35,.3,.28);m.rotation.z=.12;m.scale.y=Math.min(m.scale.y,.6);m.position.y=h*.3}else{if(!FLAT.has(b.type))sd.color.setRGB(1,1,1);m.rotation.z=0}}
   for(const[id,m]of G.bm)if(!seen.has(id)){G.scene.remove(m);G.bm.delete(id)}
   const cs=new Set();
   for(const c of S.c){if(c.col!==col.id||c.transit)continue;cs.add(c.id);let o=G.cm.get(c.id);
@@ -1896,12 +1995,16 @@ function render3D(dt){
   const list=bubbles.slice();if(c&&!list.some(b=>b.cid===c.id)&&!G.first)list.push({cid:c.id,txt:c.th});
   o.font=`${13*dpr}px "Atkinson Hyperlegible", system-ui, sans-serif`;o.textBaseline='top';
   const v=new THREE.Vector3();
+  for(const q of S.c){if(!q.emo||q.emo.until<now||q.inB||q.col!==col.id)continue;v.set(q.x+.5,.75,q.y+.5);if(v.distanceTo(G.camera.position)>12)continue;v.project(G.camera);if(v.z>1)continue;o.font=`${28*dpr}px sans-serif`;o.textAlign='center';o.fillText(q.emo.t,(v.x+1)/2*ow,(1-v.y)/2*oh);o.textAlign='left'}
+  o.font=`${13*dpr}px "Atkinson Hyperlegible", system-ui, sans-serif`;
   for(const bb of list){const q=CM.get(bb.cid);if(q.inB)continue;v.set(q.x+.5,.62,q.y+.5);const dist=v.distanceTo(G.camera.position);if(dist>16)continue;v.project(G.camera);if(v.z>1||Math.abs(v.x)>1.2||Math.abs(v.y)>1.2)continue;
     const sx=(v.x+1)/2*ow,sy=(1-v.y)/2*oh;
     const words=`${q.fn}: ${bb.txt}`.split(' '),lines=[];let l='';for(const w of words){const t=l?l+' '+w:w;if(o.measureText(t).width>200*dpr&&l){lines.push(l);l=w}else l=t}if(l)lines.push(l);
     const lh=16*dpr,pw=Math.max(...lines.map(t=>o.measureText(t).width))+16*dpr,ph=lines.length*lh+10*dpr,bx=Math.min(Math.max(8*dpr,sx-pw/2),ow-pw-8*dpr),by=Math.max(8*dpr,sy-ph-10*dpr);
     o.globalAlpha=Math.max(.35,1-dist/18);o.fillStyle='#fbf8ff';o.strokeStyle=spOf(q).color;o.lineWidth=2.5*dpr;o.beginPath();o.roundRect(bx,by,pw,ph,6*dpr);o.fill();o.stroke();
     o.fillStyle='#1b1426';lines.forEach((t,i)=>o.fillText(t,bx+8*dpr,by+5*dpr+i*lh));o.globalAlpha=1}
+  {o.font=`600 ${11*dpr}px "Atkinson Hyperlegible", sans-serif`;o.textAlign='center';for(const b of S.b){if(b.col!==col.id)continue;v.set(b.x+.5,(H3[b.type]||1)+.25,b.y+.5);const dd=v.distanceTo(G.camera.position);if(dd>9)continue;v.project(G.camera);if(v.z>1||Math.abs(v.x)>1)continue;
+    const lb=`${ICON[b.type]||''} ${SHORT[b.type]||''}`,sx=(v.x+1)/2*ow,sy=(1-v.y)/2*oh,tw=o.measureText(lb).width;o.globalAlpha=Math.max(.3,1-dd/10);o.fillStyle='rgba(7,9,20,.75)';o.fillRect(sx-tw/2-6*dpr,sy-9*dpr,tw+12*dpr,18*dpr);o.fillStyle='#ece9f4';o.fillText(lb,sx,sy+4*dpr)}o.globalAlpha=1;o.textAlign='left'}
   if(G.toast&&G.toast.u>performance.now()){o.font=`700 ${14*dpr}px "Atkinson Hyperlegible", sans-serif`;const tw=o.measureText(G.toast.t).width;o.fillStyle='rgba(7,9,20,.9)';o.fillRect(ow/2-tw/2-14*dpr,oh*.38,tw+28*dpr,30*dpr);o.fillStyle='#ffd35a';o.fillText(G.toast.t,ow/2-tw/2,oh*.38+7*dpr)}
   if(c&&G.first&&!c.ctrl){o.fillStyle='rgba(7,9,20,.8)';const t=`You are ${c.fn} the ${spOf(c).one} · drag to look around`;o.font=`600 ${12*dpr}px "Atkinson Hyperlegible", sans-serif`;const tw=o.measureText(t).width;o.fillRect(ow/2-tw/2-10*dpr,oh-92*dpr,tw+20*dpr,22*dpr);o.fillStyle='#ece9f4';o.fillText(t,ow/2-tw/2,oh-88*dpr)}
 }
@@ -1928,7 +2031,7 @@ function controlMove(c,col,dt){
 function frontTile(c,col){const fx=Math.sin(G.yaw),fz=Math.cos(G.yaw),cx=c.x+fx*2,cy=c.y+fz*2,bm=BMS.get(col.id);let best=null,bd=9;
   for(let y=Math.round(cy)-3;y<=Math.round(cy)+3;y++)for(let x=Math.round(cx)-3;x<=Math.round(cx)+3;x++){if(!inb(x,y))continue;const t=col.tiles[idx(x,y)];if((t!==0&&t!==3)||bm[idx(x,y)])continue;if(Math.round(c.x)===x&&Math.round(c.y)===y)continue;const d=Math.hypot(x-cx,y-cy);if(d<bd){bd=d;best=[x,y]}}
   return best}
-const BUILDABLE=['home','apt','farm','o2','galley','garden','med','repair','lab','academy','fab','trade','port'];
+const BUILDABLE=['sky','mall','amuse','water','home','apt','farm','o2','galley','garden','med','repair','lab','academy','fab','trade','port'];
 function renderAct3(){
   const el=$('act3'),c=G&&G.ctlId&&CM.get(G.ctlId);if(!c||!G.on){el.hidden=true;$('dpad').hidden=true;return}
   const p=c.partner&&CM.get(c.partner),pwr=c.pwOn?{flight:G.flying?'Land':'Fly',speed:G.sprint?'Stop sprinting':'Super-speed',heal:'Heal everyone nearby',mind:'Genius breakthrough',build:'Telekinesis: finish a building',breath:'Make oxygen'}[c.pw]:null;
@@ -1941,7 +2044,7 @@ $('act3').addEventListener('click',e=>{const b=e.target.closest('button[data-a]'
     if(!o||Math.hypot(o.x-c.x,o.y-c.y)>4){toast('Nobody close enough to talk to. Walk up to someone.');return}
     const save=[o.act,o.until];c.act=o.act='hang';c.lastChat=o.lastChat=0;tryChat(c);c.act='walk';[o.act,o.until]=save;toast(`You chatted with ${o.fn} the ${spOf(o).one}.`)}
   if(a==='build'){const m=$('bmenu');if(!m.hidden){m.hidden=true;return}
-    m.innerHTML=BUILDABLE.map(t=>{const lock=(t==='apt'&&S.tech<1)||(t==='port'&&S.tech<2);return`<button data-t="${t}" ${lock||S.credits<TYPES[t].cost?'disabled':''}>${TYPES[t].name}<small>${lock?'Not invented yet':TYPES[t].cost+' credits'}</small></button>`}).join('');m.hidden=false}
+    m.innerHTML=BUILDABLE.map(t=>{const lock=(t==='apt'&&S.tech<1)||(t==='port'&&S.tech<2)||(t==='sky'&&S.tech<3)||((t==='amuse'||t==='water'||t==='mall')&&S.tech<2);return`<button data-t="${t}" ${lock||S.credits<TYPES[t].cost?'disabled':''}>${TYPES[t].name}<small>${lock?'Not invented yet':TYPES[t].cost+' credits'}</small></button>`}).join('');m.hidden=false}
   if(a==='family'){const p=c.partner&&CM.get(c.partner);
     if(p){if(p.col!==c.col||p.transit||Math.hypot(p.x-c.x,p.y-c.y)>6&&!(p.inB&&p.inB===c.home)){toast(`Go find ${p.fn} first.`);return}
       const mom=c.sex==='f'?c:p,h=c.home&&BM.get(c.home);if(!h||h.prog<1){toast('You need a home first.');return}if(h.res.length>=capOf(h)){toast('Your home is full. Build a bigger one!');return}
@@ -1990,6 +2093,8 @@ $('spotForm').addEventListener('submit',e=>{e.preventDefault();$('cmdMsg').textC
 $('urlForm').addEventListener('submit',e=>{e.preventDefault();S.liveUrl=$('liveIn').value.trim().slice(0,120);S.siteUrl=$('siteIn').value.trim().slice(0,120);save();$('cmdMsg').textContent='Links saved. New videos include them in the description.'});
 setInterval(()=>{if(spotT&&performance.now()>spotT){$('spot').hidden=true;spotT=0}},500);
 setTimeout(()=>{try{$('liveIn').value=S.liveUrl||'';$('siteIn').value=S.siteUrl||''}catch(e){}},500);
+
+(function(){const el=$('bguideList');if(!el)return;el.innerHTML=Object.keys(ICON).map(k=>`<div style="display:flex;gap:8px;align-items:flex-start;font-size:13px"><span style="font-size:20px">${ICON[k]}</span><div><b>${(TYPES[k]&&TYPES[k].name)||SHORT[k]}</b><div class="hint">${BDESC[k]||''}</div></div></div>`).join('')})();
 
 /* ---------- loop ---------- */
 let acc=0,last=performance.now(),uiT=0,saveT=0,pending=0;
