@@ -47,6 +47,7 @@ h1 span{color:var(--star)}
 .chip{display:inline-flex;align-items:center;gap:5px;padding:3px 8px 3px 4px;font:600 12.5px var(--body);border:1px solid var(--line);border-radius:14px;background:var(--panel2)}
 .chip img{width:13px;height:16px;image-rendering:pixelated}
 .chip.sk{border-color:var(--star)}
+.pw{display:grid;gap:6px}.pw div{display:flex;justify-content:space-between;gap:10px;font-size:13px;border-bottom:1px solid #ffffff12;padding-bottom:4px}.pw span{color:var(--mute,#9aa1bf)}.pw b{text-align:right}.facs{margin:0;padding-left:16px;font-size:13px;line-height:1.6}.al{font:700 10px sans-serif;padding:1px 5px;border-radius:4px}.al.good{background:#2f6b4a}.al.bad{background:#7a2a2a}.al.neutral{background:#4a4f6a}
 .pop .who img{width:27px;height:33px;image-rendering:pixelated}
 .act3{position:absolute;left:8px;right:8px;bottom:52px;z-index:2;display:flex;flex-wrap:wrap;gap:6px;justify-content:center;pointer-events:none}
 .act3 button{pointer-events:auto;padding:8px 11px;font-size:13px;border:1px solid var(--line);border-radius:8px;background:#171b31ee}
@@ -244,7 +245,7 @@ textarea{width:100%;box-sizing:border-box;min-height:170px;background:var(--pane
       <details class="card origin" id="origin" open><summary style="cursor:pointer;font:700 15px var(--display);color:var(--star)">How it began</summary>
         <div style="margin-top:8px;line-height:1.55;font-size:14px;max-width:72ch">
           <p style="margin:0 0 8px"><b>It started with one sentence typed into an AI:</b> <i>"Build an AI city I can watch develop."</i></p>
-          <p style="margin:0 0 8px">The AI built a planet called Kepra, a river, a Command Dome, and 22 settlers from 11 cartoon species, one female and one male of each. Then it let go.</p>
+          <p style="margin:0 0 8px">The AI built a planet called Kepra, a river, a fire circle, and 22 Stone Age settlers from 11 cartoon species, one female and one male of each. Then it let go.</p>
           <p style="margin:0 0 8px">Nobody controls them now. They pick their own jobs, fall in love, argue, vote, get sick, invent spaceflight, and evolve into species that never existed. Every day the world keeps going, whether anyone is watching or not.</p>
           <p style="margin:0">You can still reach in. Talk to them, tell them what to do, or send a meteor. What happens next is up to them.</p>
         </div></details>
@@ -279,6 +280,7 @@ textarea{width:100%;box-sizing:border-box;min-height:170px;background:var(--pane
 
     <aside>
       <section class="card"><h2>Colony ledger</h2><div class="stats" id="stats"></div></section>
+      <section class="card"><h2>World power</h2><div id="power"></div></section>
       <section class="card"><h2>Species race</h2><table class="lb" id="lb"></table></section>
       <section class="card"><h2>Species stock market · pretend coins</h2><div class="wallet" id="wallet"></div><div style="overflow-x:auto"><table class="lb" id="market"></table></div>
         <div class="owner"><h2 style="margin-top:14px">Supporter traders</h2>
@@ -374,11 +376,11 @@ const TYPES={
 };
 const SKILL_B={genius:'lab',engineer:'fab',fixer:'repair',cook:'galley',farmer:'farm',medic:'med',teacher:'academy',pilot:'port',leader:'trade',artist:'garden',trader:'trade',worker:'trade'};
 const TECH=[
-  {at:150,txt:'Scientists designed Hab Towers. Big apartment blocks are now possible.'},
-  {at:450,txt:'Breakthrough: spaceflight! Colonies can now build Spaceports.'},
-  {at:1000,txt:'New oxygen tech makes every Oxygen Plant 30% stronger.'},
-  {at:2000,txt:'Warp drive invented. Ship trips now take half as long.'},
-  {at:3500,txt:'Medical research extends every species\' lifespan by 15%.'}];
+  {at:2000,txt:'Scientists designed Hab Towers. Big apartment blocks are now possible.'},
+  {at:3600,txt:'Breakthrough: spaceflight! Colonies can now build Spaceports.'},
+  {at:4800,txt:'New oxygen tech makes every Oxygen Plant 30% stronger.'},
+  {at:6750,txt:'Warp drive invented. Ship trips now take half as long.'},
+  {at:9000,txt:'Medical research extends every species\' lifespan by 15%.'}];
 const PL=[{name:'Kepra',biome:0},{name:'Rusk',biome:1},{name:'Glacis',biome:2},{name:'Umbra',biome:3},{name:'Coralis',biome:0},{name:'Zephyr',biome:1},{name:'Vesper',biome:2},{name:'Nyx',biome:3}];
 const BIOME=[
   {g1:'#3f7f74',g2:'#458a7d',sp:'#5aa596',lq:'#b5538f',lq2:'#d97ab4',rk:'#8f7fe6',rk2:'#c9bdfa',dot:'#62c6b2'},
@@ -395,7 +397,20 @@ const PCH=[
   {name:'Wild storms',adj:'Storm',desc:'Buildings wear out twice as fast.',decay:2},
   {name:'Low gravity',adj:'Sky',desc:'Everyone moves faster, but lives 15% shorter.',speed:1.4,life:.85},
   {name:'Thin air',adj:'Void',desc:'Citizens burn 60% more oxygen.',o2:1.6}];
-const pc=col=>PCH[(col&&col.p)||0]||PCH[0];
+const SEAS=[
+ [{n:'Spring',e:'🌸',v:'petal',t:'#ffd0e830',m:{farm:1.1}},{n:'Summer',e:'☀️',v:'',t:'#ffe08a18',m:{}},{n:'Autumn',e:'🍂',v:'leaf',t:'#ff9a4022',m:{farm:1.15}},{n:'Winter',e:'❄️',v:'snow',t:'#e8f2ff40',m:{farm:.7,hunger:1.15}}],
+ [{n:'Dry Season',e:'🏜️',v:'dust',t:'#e0a05a22',m:{farm:.75}},{n:'Scorch Season',e:'🔥',v:'heat',t:'#ff602a26',m:{farm:.6,o2:1.15}},{n:'Rain Bloom',e:'🌧️',v:'rain',t:'#4a7ab022',m:{farm:1.4}},{n:'Cool Season',e:'🌤️',v:'',t:'',m:{}}],
+ [{n:'Long Night',e:'❄️',v:'snow',t:'#c8dcff40',m:{farm:.6,hunger:1.2}},{n:'Deep Freeze',e:'🥶',v:'snow',t:'#e8f4ff55',m:{farm:.5,hunger:1.3}},{n:'Thaw',e:'💧',v:'rain',t:'#8ab0d022',m:{farm:1.1}},{n:'Brief Summer',e:'☀️',v:'',t:'#ffe08a14',m:{farm:1.3}}],
+ [{n:'Twilight',e:'🌆',v:'',t:'',m:{}},{n:'Eclipse',e:'🌑',v:'',t:'#08061a55',m:{farm:.7,nightBonus:1.2}},{n:'Glow Bloom',e:'✨',v:'spore',t:'#7ff0d818',m:{farm:1.2}},{n:'Long Dusk',e:'🌘',v:'',t:'#1a103022',m:{}}],
+ [{n:'Calm Season',e:'🌿',v:'',t:'',m:{}},{n:'Spore Bloom',e:'🍄',v:'spore',t:'#9adf6a26',m:{ill:2}},{n:'Clear Skies',e:'🌤️',v:'',t:'',m:{ill:.6}},{n:'Damp Season',e:'💧',v:'rain',t:'#4a7a6a22',m:{ill:1.3,farm:1.1}}],
+ [{n:'Calm Season',e:'☁️',v:'',t:'',m:{}},{n:'Hurricane Season',e:'🌀',v:'rain',t:'#30406a40',m:{decay:2}},{n:'Lightning Season',e:'⚡',v:'rain',t:'#20284a30',m:{decay:1.4}},{n:'Still Air',e:'🌤️',v:'',t:'',m:{decay:.6}}],
+ [{n:'Drift Season',e:'🎈',v:'',t:'',m:{}},{n:'Meteor Showers',e:'☄️',v:'star',t:'#0a0a2a30',m:{}},{n:'Bright Season',e:'☀️',v:'',t:'#ffe08a14',m:{farm:1.1}},{n:'Shadow Season',e:'🌑',v:'',t:'#0a081a40',m:{farm:.85}}],
+ [{n:'Dust Season',e:'🌪️',v:'dust',t:'#a0806040',m:{o2:1.25}},{n:'Clear Season',e:'🌤️',v:'',t:'',m:{}},{n:'Thin Season',e:'💨',v:'dust',t:'#c0b0a022',m:{o2:1.15}},{n:'Mist Bloom',e:'🌫️',v:'mist',t:'#d0d8e030',m:{o2:.85,farm:1.1}}]];
+const YEAR=12,seasonIdx=()=>Math.floor((((typeof S!=='undefined'&&S?day():1)-1)%YEAR)/(YEAR/4));
+const seasonOf=col=>SEAS[(col&&col.p)||0][(seasonIdx()+((col&&col.p)||0))%4];
+const PCC=new Map();
+const pc=col=>{const base=PCH[(col&&col.p)||0]||PCH[0];if(!col)return base;const si=seasonIdx(),k=col.id,hit=PCC.get(k);if(hit&&hit.si===si&&hit.p===col.p)return hit.o;
+  const o=Object.assign({},base),m=seasonOf(col).m;for(const x in m)o[x]=(o[x]==null?1:o[x])*m[x];PCC.set(k,{si,p:col.p,o});return o};
 function pm(c,k){const col=colById(c.col);if(!col)return 1;const v=pc(col)[k];if(v==null)return 1;if(spOf(c).adapt===col.p&&(v>1?k!=='speed':v<1))return 1;return v}
 const BASE_N=11;
 const ICON={hall:'🏛️',home:'🏠',apt:'🏢',farm:'🌱',galley:'🍲',o2:'💨',lab:'🔬',repair:'🔧',med:'🏥',fab:'⚙️',academy:'🎓',trade:'💰',garden:'🌳',port:'🚀',sky:'🏙️',mall:'🛍️',amuse:'🎡',water:'🌊'};
@@ -524,7 +539,7 @@ function rarestSkill(){const n={};for(const k of SK)n[k]=0;for(const c of S.c)n[
 function newCitizen(col,sp,sex,age,skill){
   const h=hallOf(col.id);
   const base=(S.iq&&S.iq[sp])||IQ0[sp];
-  const c={iq:Math.round(base+(Math.random()-.5)*14),edu:0,id:S.nc++,fn:newName(),sp,sex,age,skill:skill||rarestSkill(),col:col.id,home:0,job:0,partner:0,x:h.x,y:h.y,path:null,pi:0,inB:h.id,
+  const c={iq:Math.round(base+(Math.random()-.5)*14),edu:0,soc:Math.round(20+Math.random()*45),al:+((Math.random()*2-1)*(Math.random()<.5?1:.5)).toFixed(2),id:S.nc++,fn:newName(),sp,sex,age,skill:skill||rarestSkill(),col:col.id,home:0,job:0,partner:0,x:h.x,y:h.y,path:null,pi:0,inB:h.id,
     act:'home',goal:null,until:S.t+5+((rand()*40)|0),en:65+rand()*30,hu:60+rand()*35,fun:55+rand()*35,hp:100,sick:0,coins:30,th:'We made it.',hap:70,transit:0};
   S.c.push(c);CM.set(c.id,c);return c;
 }
@@ -605,7 +620,7 @@ function stepCitizen(c){
     switch(c.act){
       case'sleep':c.en+=.14;break;
       case'work':{const w=.06;c.coins+=w*.75;S.credits+=w*.25;c.en-=.01;
-        const bk=TYPES[b.type].skill,skilled=bk&&knows(c,bk),main=bk===c.skill,m=(sp.workMul||1)*(c.skill==='worker'?1.5:1)*(c.pwOn&&c.pw==='speed'?2:1)*Math.max(.6,Math.min(1.6,(c.iq||100)/100))*(sp.night?1.25*(pc(colById(c.col)).nightBonus||1):1);if(b.type==='lab'||b.type==='academy')c.iq=(c.iq||100)+.0008;if(c.pwOn&&c.pw==='mind')S.research+=.08;
+        const bk=TYPES[b.type].skill,skilled=bk&&knows(c,bk),main=bk===c.skill,m=(sp.workMul||1)*(c.skill==='worker'?1.5:1)*(c.pwOn&&c.pw==='speed'?2:1)*Math.max(.6,Math.min(1.6,(c.iq||100)/100))*(sp.night?1.25*(pc(colById(c.col)).nightBonus||1):1)*(c.skill==='trader'||c.skill==='leader'?1+(c.soc||40)/250:1);if(b.type==='lab'||b.type==='academy')c.iq=(c.iq||100)+.0008;if(c.pwOn&&c.pw==='mind')S.research+=.08;
         b.on++;if(skilled)b.onSk++;
         if(main){const l0=lvOf(c);c.xp=(c.xp||0)+.055*(colB(colById(c.col)).some(x=>x.type==='academy'&&x.onSk>0)?1.3:1)*Math.max(.7,(c.iq||100)/100);skillUp(c,l0)}
         else if(bk&&!skilled){c.lx=c.lx||{};c.lx[bk]=(c.lx[bk]||0)+.015;if(c.lx[bk]>=60&&(c.sk2||[]).length<2){c.sk2=(c.sk2||[]).concat(bk);delete c.lx[bk];log(`${nameOf(c)} learned a new skill on the job: ${SKILLS[bk]}!`,'life',c.x,c.y,c.col)}}
@@ -635,7 +650,7 @@ function findJob(c){
   for(const b of S.b){if(b.col!==c.col||b.prog<1||TYPES[b.type].jobs<=b.wrk.length)continue;
     const d=Math.hypot(b.x-ref.x,b.y-ref.y)-(TYPES[b.type].skill===c.skill?30:knows(c,TYPES[b.type].skill)?20:0);if(d<bd){bd=d;best=b}}
   if(best){best.wrk.push(c.id);c.job=best.id;
-    if(TYPES[best.type].skill===c.skill&&rand()<.5)log(`${nameOf(c)}, a ${SKILLS[c.skill].toLowerCase()}, started work at the ${TYPES[best.type].name}.`,'life',best.x,best.y,c.col)}
+    if(TYPES[best.type].skill===c.skill&&rand()<.5)log(`${nameOf(c)}, a ${SKILLS[c.skill].toLowerCase()}, started work at the ${bName(best.type)}.`,'life',best.x,best.y,c.col)}
 }
 
 /* ---------- thoughts ---------- */
@@ -701,6 +716,7 @@ function log(txt,kind,x,y,col){
   if(BIG.has(kind)||kind==='build'||kind==='agent'||kind==='market'||kind==='iq'||(kind==='chat'&&rand()<.35))narrate(kind,txt);
   if((PRI[kind]||0)>=4&&!catchingUp)queueClip({txt,kind,col,x,y});
   if(SFXK[kind])sfx(SFXK[kind]);
+  if(HK.has(kind))chronLog(kind,txt,x,y,col);
 }
 function housingCap(col){return colB(col).reduce((s,b)=>s+(isHousing(b)?capOf(b):0),0)}
 function avgHap(list){list=list||S.c;return list.length?list.reduce((s,c)=>s+c.hap,0)/list.length:0}
@@ -712,7 +728,7 @@ function iqTick(){
       log(d>0?`The ${SPECIES[i].many} are getting smarter. Average IQ is now ${Math.round(v)} (up ${Math.round(d)}).`:`The ${SPECIES[i].many} are getting dumber. Average IQ dropped to ${Math.round(v)} (down ${Math.round(-d)}).`,'iq')}}
 }
 function newDay(){
-  iqTick();dailyDrama();
+  iqTick();dailyDrama();societyDaily();
   S.mk.open=S.mk.px.slice();
   S.hist=S.hist||[];S.hist.push({d:day()-1,pop:S.c.length,cols:S.cols.length,sp:new Set(S.c.map(c=>c.sp)).size,iq:Math.round(S.c.reduce((a,c)=>a+(c.iq||100),0)/Math.max(1,S.c.length))});if(S.hist.length>400)S.hist.shift();
   S.days.push({day:day()-1,pop:S.c.length,cols:S.cols.length,events:S.today});if(S.days.length>14)S.days.shift();S.today=[];
@@ -810,13 +826,14 @@ function council(){
     jobs:(cmp.jobs||0)*.8,
     fun:(cmp.fun||0)*.6+(S.credits>800&&pop>=28?5:0),
     school:(cmp.school||0)*.7,
-    research:(S.tech<TECH.length&&labs<1+S.cols.length?6:0)+(S.tech<2&&labs<3?4:0),
+    research:((S.tech<TECH.length||ageNow()<6)&&labs<2+S.cols.length+Math.floor(S.c.length/25)?6:0)+(S.tech<2&&labs<3?4:0),
     expand:(cmp.crowding||0)*.4+(crowded?12:0)+(pop>S.cols.length*40?8:0)+(cmp.lonely||0)*.1,
   };
   for(const a of S.c)if(a.agent&&a.agent.goal&&scores[a.agent.goal]!=null)scores[a.agent.goal]+=6;
+  if(S.demand&&S.demand.until>=day()&&scores[S.demand.need]!=null)scores[S.demand.need]+=10;
   if(S.mayor&&CM.has(S.mayor.id)){const m={farms:'food',fun:'fun',science:'research',expand:'expand'}[S.mayor.pol];if(scores[m]!=null)scores[m]+=7}
   S.agendaLast=scores;
-  const limit=3+Math.min(3,Math.floor(S.credits/1500))+(S.b.some(b=>b.type==='hall'&&b.wrk.some(i=>CM.get(i)&&CM.get(i).skill==='leader'))?1:0);
+  const limit=(S.gov==='kingdom'||S.gov==='dictator'?1:0)+3+Math.min(3,Math.floor(S.credits/1500))+(S.b.some(b=>b.type==='hall'&&b.wrk.some(i=>CM.get(i)&&CM.get(i).skill==='leader'))?1:0);
   const order=Object.entries(scores).filter(e=>e[1]>=2).sort((a,b)=>b[1]-a[1]);
   const mins=[];
   const acted=new Set();
@@ -836,7 +853,7 @@ function build(type,col,why){
   const cost=TYPES[type].cost;if(S.credits<cost)return null;
   const s=ensureSpot(col,type);if(!s)return null;
   S.credits-=cost;const b=addBuilding(type,s[0],s[1],col,false);
-  const txt=`${col.name}: council approved a ${TYPES[type].name}${why?` (${why})`:''}.`;
+  const txt=`${col.name}: council approved a ${bName(type)}${why?` (${why})`:''}.`;
   log(txt,'build',b.x,b.y,col.id);return txt;
 }
 function act(need){
@@ -902,7 +919,7 @@ function tick(){
       if(b.type==='o2')prod+=.12*(S.tech>=3?1.3:1);
       if(b.type==='hall')prod+=.06;
       if(b.type==='farm')col.food+=(.045*b.out+.02)*(pc(col).farm||1);
-      if(b.type==='lab')S.research+=.05*b.out;
+      if(b.type==='lab')S.research+=.05*b.out*(S.gov==='techno'?1.2:1);
       if(b.type==='trade')S.credits+=.06*b.out;
       if(b.type==='mall')S.credits+=.09*b.out;
       if(b.type==='amuse'||b.type==='water')S.credits+=.03*b.out;
@@ -920,20 +937,21 @@ function tick(){
     if(col.o2<150&&col.o2rate<0&&colC(col).length&&!S.b.some(b=>b.col===col.id&&b.type==='o2'&&b.prog<1)&&S.credits>=90&&col.warn.emer!==day()){col.warn.emer=day();
       const r=build('o2',col,'emergency session: the air is running out');if(r)log(`Emergency council session on ${col.name}! A new Oxygen Plant is being rushed into construction.`,'crisis',col.cx,col.cy,col.id)}
     col.minCond=minC;col.broken=brk;
-    for(const b of S.b)if(b.col===col.id&&b.prog<1){b.prog+=(1+boost*.25)/TYPES[b.type].time;if(b.prog>=1){b.prog=1;b.prevCap=0;b.cond=100;if(rand()<.6)log(`A new ${TYPES[b.type].name} opened on ${col.name}.`,'built',b.x,b.y,col.id)}}
+    for(const b of S.b)if(b.col===col.id&&b.prog<1){b.prog+=(1+boost*.25)/TYPES[b.type].time;if(b.prog>=1){b.prog=1;b.prevCap=0;b.cond=100;if(rand()<.6)log(`A new ${bName(b.type)} opened on ${col.name}.`,'built',b.x,b.y,col.id)}}
     const d=day(),w=col.warn;
     if(col.food<1&&colC(col).length&&w.food!==d){w.food=d;log(`Food ran out on ${col.name}. Citizens are going hungry.`,'crisis',col.cx,col.cy,col.id)}
     if(col.o2<60&&col.o2>0&&w.o2!==d){w.o2=d;log(`Oxygen is running low on ${col.name}!`,'crisis',col.cx,col.cy,col.id)}
     if(col.o2<=0&&colC(col).length&&w.o2z!==d){w.o2z=d;log(`Oxygen is gone on ${col.name}. Citizens are struggling to breathe.`,'crisis',col.cx,col.cy,col.id)}
-    if(brk>0&&low&&w.brk!==d){w.brk=d;log(`The ${TYPES[low.type].name} on ${col.name} broke down. It stops working until a fixer repairs it.`,'crisis',low.x,low.y,col.id)}
+    if(brk>0&&low&&w.brk!==d){w.brk=d;log(`The ${bName(low.type)} on ${col.name} broke down. It stops working until a fixer repairs it.`,'crisis',low.x,low.y,col.id)}
     col.food=Math.max(0,col.food);
   }
-  while(S.tech<TECH.length&&S.research>=TECH[S.tech].at){log(TECH[S.tech].txt,'tech',24,21,1);S.tech++}
-  const e=eraOf();if(e>S.era){S.era=e;log(`The colony's look just upgraded to Era ${e}: ${ERA[e]}. The citizens' own research made the world more detailed.`,'tech',24,21,S.view)}
+  while(S.tech<TECH.length&&S.research>=TECH[S.tech].at*PACE){log(TECH[S.tech].txt,'tech',24,21,1);S.tech++}
+  ageTick();const e=eraOf();if(e>S.era){S.era=e;log(`The colony's look just upgraded to Era ${e}: ${ERA[e]}. The citizens' own research made the world more detailed.`,'tech',24,21,S.view)}
   if(S.t%60===0)marketTick();
   if(S.t%240===120)dramaRoll();
   if(S.t%60===45)resilience();
   if(S.t%60===30)villainTick();
+  if(S.t%60===40)societyHour();
   shipTick();
 }
 
@@ -963,9 +981,10 @@ function tryChat(a){
   if(b.pwOn)opts.push(()=>[`Can you show me your ${POWERS[b.pw]}?`,'Maybe later. It wears me out.']);
   if(a.agent&&a.agent.goal)opts.push(()=>[`Will you help me ${GOAL[a.agent.goal]}?`,"Count me in. I'll talk to the council."]);
   opts.push(()=>pick(JOKES),()=>pick(JOKES),()=>[`Why do ${spOf(b).many} ${pick(['never get lost','always win at cards','make great neighbors','hate Mondays'])}?`,pick(['No idea, but I believe it.','Please tell me there is a punchline.','Because the council said so.','That is the most offensive compliment I have heard.'])]);
+  {const se=seasonOf(colById(a.col));opts.push(()=>[pick([`${se.e} I love ${se.n}!`,`Ugh, ${se.n} again.`,`${se.e} ${se.n} always changes everything around here.`]),pick(['Same here.','Make the most of it.','It won\'t last forever.','Stock up while you can!'])])}
   opts.push(()=>['Look at the moons tonight.','I wonder if we\'ll live up there one day.'],()=>[`Hey ${b.fn}!`,`Hi ${a.fn}! Nice day on ${col.name}.`]);
   const [la,lb]=pick(opts)();
-  a.fun=Math.min(100,a.fun+10);b.fun=Math.min(100,b.fun+10);
+  a.fun=Math.min(100,a.fun+7+(b.soc||40)/12);b.fun=Math.min(100,b.fun+7+(a.soc||40)/12);a.soc=Math.min(100,(a.soc||40)+.35);b.soc=Math.min(100,(b.soc||40)+.35);if(a.soc>=75&&!a.charm){a.charm=1;if(rand()<.5)log(`${nameOf(a)} has become the most charming citizen in the neighborhood. Everyone wants to talk to them.`,'life',a.x,a.y,a.col)}
   a.fr=a.fr||{};b.fr=b.fr||{};a.fr[b.id]=(a.fr[b.id]||0)+1;b.fr[a.id]=(b.fr[a.id]||0)+1;
   if(!catchingUp&&a.col===S.view){const now=performance.now();bubbles=bubbles.filter(x=>x.cid!==a.id&&x.cid!==b.id);
     bubbles.push({cid:a.id,txt:la,until:now+4500},{cid:b.id,txt:lb,from:now+1800,until:now+6500});if(bubbles.length>8)bubbles.splice(0,bubbles.length-8)}
@@ -976,6 +995,201 @@ function tryChat(a){
     log(`Love across species! ${a.fn} the ${spOf(a).one} and ${b.fn} the ${spOf(b).one} became partners on ${col.name}. Their kids could be a whole new species.`,'life',a.x,a.y,col.id)}
   else if(rand()<.07)log(`${a.fn} the ${spOf(a).one} to ${b.fn} the ${spOf(b).one}: "${la}" ${b.fn}: "${lb}"`,'chat',a.x,a.y,col.id);
 }
+
+/* ---------- society: ages, territory, wars, government, factions, activists, history ---------- */
+const AGES=[{n:'Stone Age',at:0,e:'🔥'},{n:'Bronze Age',at:750,e:'🏺'},{n:'Industrial Age',at:2000,e:'🏭'},{n:'Space Age',at:3600,e:'🚀'},{n:'Star Age',at:6750,e:'🌌'},{n:'AI Age',at:12000,e:'🤖'},{n:'Quantum Age',at:21000,e:'⚛️'}];
+const AGETXT=['','Huts are turning into stone and bronze houses.','Smoke stacks, machines and real streets everywhere.','They looked up at the stars and built rockets.','Warp-speed ships now connect the planets.','Thinking machines and robot drones now help run the world.','Buildings shimmer, citizens blink from place to place, and ships arrive the moment they leave.'];
+const PACE=2.5;
+const ageNow=()=>(typeof S!=="undefined"&&S&&S.age)||0;
+const AN={hall:['Fire Circle','Elder Hall','Town Hall'],home:['Hut','Mud House','House'],apt:['Longhouse','Longhouse','Apartments'],farm:['Berry Patch','Wheat Field','Farm'],galley:['Campfire','Cookhouse','Diner'],o2:['Air Grove','Air Grove','Air Works'],lab:['Thinking Rock','Scroll House','Laboratory'],repair:['Tool Hut','Smithy','Workshop'],med:['Herb Hut','Healer House','Clinic'],fab:['Craft Hut','Forge','Factory'],academy:['Story Circle','Scroll School','School'],trade:['Barter Spot','Bazaar','Market'],garden:['Meadow','Garden','Park'],amuse:['Festival Grounds','Fairground','Fun Fair'],water:['Swimming Hole','Bathhouse','Pool'],mall:['Great Bazaar','Great Bazaar','Department Store'],sky:['Stone Tower','Stone Tower','High-Rise']};
+function bName(t){const a=ageNow();return a<3&&AN[t]?AN[t][a]:TYPES[t].name}
+const GOVS={tribe:{n:'Tribal Chiefdom',t:'Chief',el:0},elders:{n:'Council of Elders',t:'High Elder',el:0},kingdom:{n:'Kingdom',t:'Monarch',el:0},dictator:{n:'Dictatorship',t:'Dictator',el:0},democracy:{n:'Democracy',t:'President',el:1},federation:{n:'Star Federation',t:'Federation President',el:1},techno:{n:'AI Technocracy',t:'Chief Architect',el:1}};
+const gov=()=>GOVS[S.gov||'tribe'];const LT=()=>gov().t;const elective=()=>!!gov().el;
+const AL={good:{e:'🕊️',w:'GOOD'},bad:{e:'🏴',w:'BAD'},neutral:{e:'⚖️',w:'NEUTRAL'}};
+const FNAMES={good:['Light Keepers','Builders Guild','Peace Circle','Star Healers','Dawn Alliance'],bad:['Shadow Syndicate','Rust Gang','Void Cult','Black Market Ring','Iron Fist'],neutral:['Free Traders','Wanderers League','Science Collective','Star Explorers','Quiet Order']};
+const facOf=c=>c&&c.fac&&(S.fac||[]).find(f=>f.id===c.fac);
+const socLbl=v=>v>=75?'Charmer':v>=50?'Friendly':v>=30?'Quiet':'Shy';
+const ZX=8,ZY=6;
+const zoneOf=(x,y)=>Math.min(ZX-1,Math.max(0,Math.floor(x*ZX/W)))+Math.min(ZY-1,Math.max(0,Math.floor(y*ZY/H)))*ZX;
+const zName=z=>`${'ABCDEFGH'[z%ZX]}${Math.floor(z/ZX)+1}`;
+const zCenter=z=>[(z%ZX+.5)*W/ZX,(Math.floor(z/ZX)+.5)*H/ZY];
+const zAdj=(a,b)=>Math.abs(a%ZX-b%ZX)+Math.abs(Math.floor(a/ZX)-Math.floor(b/ZX))===1;
+const HK=new Set(['tech','colony','species','election','disaster']);
+function chronLog(kind,txt,x,y,col){if(catchingUp&&kind==='disaster'&&rand()<.5)return;S.hist=S.hist||[];
+  const cast=[];for(const c of S.c){if(cast.length>=4)break;if(new RegExp('\\b'+c.fn+'\\b').test(txt))cast.push({fn:c.fn,sp:c.sp,sex:c.sex,id:c.id})}
+  S.hist.push({d:day(),k:kind,t:txt,col:col||S.view,x:x||24,y:y||21,cast,age:ageNow(),era:S.era||1});if(S.hist.length>400)S.hist.splice(0,S.hist.length-400)}
+function ageTick(){let a=0;while(a<AGES.length-1&&S.research>=AGES[a+1].at*PACE)a++;if(S.age==null){S.age=a;return}if(a<=S.age)return;const a0=S.age;S.age=a;const A=AGES[a];PRIM.clear();
+  log(`${A.e} A NEW AGE! The citizens' discoveries pushed the colony into the ${A.n}. ${AGETXT[a]}`,'tech',24,21,S.view);if(typeof toast==='function')toast(`${A.e} ${A.n}!`);for(let k=a0+1;k<=a;k++)govShift(k)}
+function setGov(g,why){if(S.gov===g)return;const old=gov().n;S.gov=g;log(`🏛️ NEW GOVERNMENT: ${why} Starhaven went from ${old} to ${GOVS[g].n}.`,'election',24,21,S.view);if(!GOVS[g].el)pickRuler();else{S.lastElection=day();EVENTS.election()}}
+function govShift(a){const g=S.gov||'tribe';
+  if(a===1&&g==='tribe')setGov(rand()<.5?'kingdom':'elders','The tribes grew into a real society.');
+  else if(a===2&&!GOVS[g].el&&g!=='dictator'&&rand()<.5)setGov('democracy','Factory workers demanded a vote.');
+  else if(a===3&&!GOVS[g].el&&g!=='dictator')setGov('democracy','Space-age citizens demanded a say.');
+  else if(a===4&&GOVS[g].el&&S.cols.length>=3)setGov('federation','The planets joined together.');
+  else if(a===5&&GOVS[g].el)setGov('techno','The colony now plans its future with AI advisors.')}
+function pickRuler(prev){const l=S.c.filter(c=>!c.transit&&c.age>=20&&c.age<lifeOf(c)*.85);if(!l.length)return;
+  const sc=c=>(c.soc||40)+c.age*.3+(facOf(c)?facOf(c).mem*2:0)+(prev&&prev.sp===c.sp&&S.gov==='kingdom'?40:0)+rand()*10;const w=l.sort((a,b)=>sc(b)-sc(a))[0];
+  S.mayor={id:w.id,pol:pick(['farms','fun','science','expand']),day:day()};const f=facOf(w);
+  log(`👑 ${nameOf(w)} is now ${LT()} of all Starhaven${f?`, backed by the ${AL[f.al].e} ${f.n}`:''}.`,'election',w.x,w.y,w.col)}
+function leaderCheck(){if(S.mayor&&CM.has(S.mayor.id))return;const prev=S.mayor;if(!S.c.length)return;
+  if(elective()){if(S.c.length>=6){S.lastElection=day();EVENTS.election()}}else pickRuler(prev&&{sp:-1})}
+function claimTerritory(col){const cnt=Array.from({length:ZX*ZY},()=>({}));
+  for(const c of S.c){if(c.col!==col.id||c.transit||c.age<12||!c.home)continue;const h=BM.get(c.home);if(!h)continue;const z=zoneOf(h.x,h.y);cnt[z][c.sp]=(cnt[z][c.sp]||0)+1}
+  col.terr=col.terr||Array(ZX*ZY).fill(-1);col.occ=col.occ||{};
+  for(let z=0;z<ZX*ZY;z++){const o=col.occ[z];if(o&&o.until>day()&&S.c.some(c=>c.sp===o.sp)){col.terr[z]=o.sp;continue}delete col.occ[z];
+    const e=Object.entries(cnt[z]).map(([k,v])=>[+k,v]).sort((a,b)=>b[1]-a[1]);if(!e.length||(e[1]&&e[1][1]===e[0][1]&&col.terr[z]<0)){col.terr[z]=-1;continue}
+    if(e[1]&&e[1][1]===e[0][1]&&col.terr[z]>=0)continue;const nw=e[0][0];
+    if(nw!==col.terr[z]){const old=col.terr[z];col.terr[z]=nw;if(rand()<(old>=0?.8:.35)){const[x,y]=zCenter(z);log(`🚩 The ${SPECIES[nw].many} claimed the ${zName(z)} district of ${col.name}${old>=0&&SPECIES[old]?`, pushing out the ${SPECIES[old].many}`:''}.`,'life',x,y,col.id)}}}
+  const own={};for(const s of col.terr)if(s>=0)own[s]=(own[s]||0)+1;const top=Object.entries(own).sort((a,b)=>b[1]-a[1])[0];
+  const claimed=col.terr.filter(x=>x>=0).length,ruler=top&&claimed>=3&&top[1]>claimed/2?+top[0]:-1;if(ruler!==(col.ruler??-1)){col.ruler=ruler;if(ruler>=0)log(`🏳️ The ${SPECIES[ruler].many} now control most of ${col.name} (${top[1]} of ${claimed} districts).`,'colony',col.cx,col.cy,col.id)}}
+function startWar(col,a,b,why){if(S.war||!SPECIES[a]||!SPECIES[b])return;S.war={a,b,col:col.id,start:day(),until:day()+2+((rand()*2)|0),ra:0,rb:0,taken:[]};
+  log(`⚔️ WAR! ${why} The ${SPECIES[a].many} declared a PAINT WAR on the ${SPECIES[b].many} on ${col.name}. Paint balloons are flying!`,'disaster',col.cx,col.cy,col.id);sfx('alarm')}
+function endWar(how,by){const w=S.war;if(!w)return;const col=colById(w.col),win=w.ra>w.rb?w.a:w.rb>w.ra?w.b:-1;S.war=null;S.wars=S.wars||[];S.wars.push({a:w.a,b:w.b,col:w.col,d:day(),ra:w.ra,rb:w.rb});
+  const res=win<0?`It ended in a tie, ${w.ra} raids each.`:`The ${SPECIES[win].many} won, ${Math.max(w.ra,w.rb)} raids to ${Math.min(w.ra,w.rb)}${w.taken.length?`, and kept ${w.taken.length} captured district${w.taken.length>1?'s':''}`:''}.`;
+  const t=how==='talks'?`🕊️ PEACE! ${by?nameOf(by)+' talked both sides into a treaty. ':''}The paint war between the ${SPECIES[w.a].many} and ${SPECIES[w.b].many} is over. ${res}`:how==='protest'?`🕊️ PEACE! Protesters filled the streets until both sides gave up. ${res}`:`🕊️ The paint war on ${col.name} is over. ${res}`;
+  log(t,'party',col.cx,col.cy,col.id);chronLog('party',t,col.cx,col.cy,col.id);for(const c of S.c)if((c.sp===w.a||c.sp===w.b)&&c.col===w.col)c.fun=Math.min(100,c.fun+15)}
+const CRIES=['CHAAARGE!','Taste the purple!','For our species!','This district is OURS!','Not the face!','Retreat! Retreat!','You missed me!','Paint war forever!'];
+function warHour(){const w=S.war;if(!w)return;const col=colById(w.col);if(!col){S.war=null;return}if(day()>=w.until){endWar('time');return}
+  const h=hour();if(h<8||h>20)return;
+  const sides=[w.a,w.b],dipl=S.c.filter(c=>c.col===w.col&&sides.includes(c.sp)&&(c.soc||0)>=75&&c.age>=18);
+  if(dipl.length&&rand()<.06){endWar('talks',pick(dipl));return}
+  if(rand()<.55)return;const atk=rand()<.5?w.a:w.b,def=atk===w.a?w.b:w.a;col.terr=col.terr||Array(ZX*ZY).fill(-1);
+  const mine=col.terr.map((s,i)=>s===atk?i:-1).filter(i=>i>=0),tz=col.terr.map((s,i)=>s===def?i:-1).filter(i=>i>=0);
+  const z=tz.find(i=>mine.some(m=>zAdj(m,i)))??(tz.length?pick(tz):zoneOf(col.cx,col.cy));
+  const str=s=>{const l=S.c.filter(c=>c.col===w.col&&c.sp===s&&c.age>=16&&!c.transit);return (l.length+l.filter(c=>c.role==='army').length*.8)*(1+l.filter(c=>c.pwOn).length*.3)*(1+l.reduce((t,c)=>t+(c.soc||40),0)/Math.max(1,l.length)/250)};
+  const sa=str(atk)+rand()*4,sd=str(def)*1.15+rand()*4,won=sa>sd;if(atk===w.a)won?w.ra++:w.rb++;else won?w.rb++:w.ra++;
+  const[x,y]=zCenter(z);fx({k:'paint',col:col.id,x,y,dur:2600,c1:SPECIES[atk].color,c2:SPECIES[def].color});
+  const fighters=S.c.filter(c=>c.col===w.col&&(c.sp===atk||c.sp===def)&&!c.inB&&!c.transit&&c.age>=12).slice(0,4);
+  if(!catchingUp&&col.id===S.view){const now=performance.now();fighters.forEach((c,i)=>{bubbles.push({cid:c.id,txt:pick(CRIES),from:now+i*700,until:now+i*700+3000});c.emo={t:'🎨',until:now+4000}})}
+  for(const c of S.c)if(c.col===w.col&&c.sp===(won?def:atk))c.fun=Math.max(0,c.fun-6);
+  const hit=S.b.filter(b=>b.col===col.id&&b.prog>=1&&b.type!=='hall'&&zoneOf(b.x,b.y)===z);if(hit.length&&rand()<.5){const b=pick(hit);b.cond=Math.max(25,b.cond-12)}
+  if(won&&col.terr[z]===def){col.terr[z]=atk;col.occ=col.occ||{};col.occ[z]={sp:atk,until:day()+5};if(!w.taken.includes(z))w.taken.push(z)}
+  if(rand()<.35)log(`⚔️ RAID on the ${zName(z)} district! ${fighters.length?fighters.map(c=>c.fn).slice(0,3).join(', ')+' led the charge. ':''}The ${SPECIES[atk].many} ${won?'splattered the '+SPECIES[def].many+' and took the district':'were driven back, dripping with '+SPECIES[def].many+' paint'}. Score: ${SPECIES[w.a].many} ${w.ra}, ${SPECIES[w.b].many} ${w.rb}.`,'chat',x,y,col.id)}
+function factionDaily(){S.fac=S.fac||[];const adults=S.c.filter(c=>c.age>=18&&!c.transit);
+  for(const f of S.fac.slice()){const mem=S.c.filter(c=>c.fac===f.id);f.mem=mem.length;
+    if(!mem.length){S.fac=S.fac.filter(x=>x!==f);log(`${AL[f.al].e} The ${f.n} broke up. Nobody was left to carry the banner.`,'election',24,21,S.view);continue}
+    if(!CM.has(f.leader)){const nl=mem.sort((a,b)=>(b.soc||0)-(a.soc||0))[0];f.leader=nl.id;if(rand()<.6)log(`${AL[f.al].e} ${nameOf(nl)} is the new boss of the ${f.n}.`,'life',nl.x,nl.y,nl.col)}
+    const ld=CM.get(f.leader);const pool=adults.filter(c=>!c.fac&&(f.al==='good'?(c.al||0)>.25:f.al==='bad'?(c.al||0)<-.25:Math.abs(c.al||0)<=.35));
+    const n=Math.min(pool.length,Math.floor(rand()*(1+(ld.soc||40)/35)));for(let i=0;i<n;i++){const c=pool.splice((rand()*pool.length)|0,1)[0];c.fac=f.id}
+    f.mem=S.c.filter(c=>c.fac===f.id).length;if(rand()>.45)continue;const col=colById(ld.col)||S.cols[0];
+    if(f.al==='good'){const r=rand();if(S.war&&r<.35){endWar('talks',ld);continue}
+      if(r<.6){const bs=S.b.filter(b=>b.prog>=1&&b.cond<70).slice(0,4);bs.forEach(b=>b.cond=Math.min(100,b.cond+25));if(bs.length)log(`🕊️ The ${f.n} spent the day fixing ${bs.length} run-down buildings for free.`,'life',col.cx,col.cy,col.id)}
+      else{let k=0;for(const c of S.c)if(c.hap<45){c.fun=Math.min(100,c.fun+15);k++}if(k)log(`🕊️ The ${f.n} handed out warm soup and hugs to ${k} sad citizens.`,'life',col.cx,col.cy,col.id)}}
+    else if(f.al==='bad'){const r=rand();
+      if(r<.35){if(policeStop(f,ld,'rob the treasury'))continue;const amt=Math.min(150,Math.round(S.credits*.05));if(amt>5){S.credits-=amt;log(`🏴 Someone broke into the treasury and stole ${amt} credits. Graffiti on the wall: "${f.n.toUpperCase()} WAS HERE".`,'disaster',col.cx,col.cy,col.id)}}
+      else if(r<.6){if(policeStop(f,ld,'vandalize a building'))continue;const bs=S.b.filter(b=>b.col===col.id&&b.prog>=1&&b.cond>50&&b.type!=='hall');if(bs.length){const b=pick(bs);b.cond=Math.max(20,b.cond-30);log(`🏴 The ${f.n} vandalized the ${bName(b.type)} on ${col.name}.`,'disaster',b.x,b.y,col.id)}}
+      else if(r<.75&&!S.war&&!S.feud){const sp=[...new Set(S.c.filter(c=>c.col===col.id).map(c=>c.sp))].filter(s=>s!==ld.sp);if(sp.length&&colC(col).length>=12)startWar(col,ld.sp,pick(sp),`The ${f.n} spread lies about their neighbors.`)}
+      else if(!elective()&&S.mayor&&CM.has(S.mayor.id)&&CM.get(S.mayor.id).fac!==f.id){const rp=facOf(CM.get(S.mayor.id));if(f.mem>=4&&f.mem>(rp?rp.mem:2)*1.4&&rand()<.35){const old=CM.get(S.mayor.id);S.gov='dictator';S.mayor={id:ld.id,pol:pick(['farms','fun','science','expand']),day:day()};
+        log(`🏴 COUP! The ${f.n} stormed the ${bName('hall')} and threw out ${nameOf(old)}. ${nameOf(ld)} declared themselves Dictator of Starhaven!`,'election',ld.x,ld.y,ld.col);sfx('alarm')}}}
+    else{const r=rand();if(r<.5){const g=30+f.mem*5;S.credits+=g;log(`⚖️ The ${f.n} closed a big trade deal: +${g} credits for the colony.`,'market',col.cx,col.cy,col.id)}else{S.research+=8+f.mem;log(`⚖️ The ${f.n} came back from an expedition with new discoveries.`,'life',col.cx,col.cy,col.id)}}}
+  const want=Math.min(6,1+Math.floor(adults.length/18));
+  if(S.fac.length<want&&rand()<.35){const fd=adults.filter(c=>!c.fac&&(c.soc||0)>=55).sort((a,b)=>(b.soc||0)-(a.soc||0))[0];if(fd){
+    const al=(fd.al||0)>.25?'good':(fd.al||0)<-.25?'bad':'neutral',used=new Set(S.fac.map(f=>f.n)),nm=FNAMES[al].find(n=>!used.has(n))||FNAMES[al][0]+' II';
+    const f={id:(S.nf=(S.nf||0)+1),n:nm,al,leader:fd.id,founded:day(),mem:1};S.fac.push(f);fd.fac=f.id;
+    log(`${AL[al].e} NEW FACTION: ${nameOf(fd)} founded the ${nm}, a ${AL[al].w} faction. ${al==='good'?'They want to help everyone.':al==='bad'?'They want power, credits, and control.':'They mostly want to trade and explore.'}`,'election',fd.x,fd.y,fd.col)}}
+  const rl=S.mayor&&CM.get(S.mayor.id),rf=facOf(rl);if(rf&&rf.al==='bad'){const amt=Math.round(S.credits*.03);S.credits-=amt;for(const c of S.c)c.fun=Math.max(0,c.fun-4);if(rand()<.4)log(`🏴 Under ${LT()} ${rl.fn}, the ${rf.n} quietly skimmed ${amt} credits. People are getting angry.`,'chat',rl.x,rl.y,rl.col)}}
+const CAUSES={housing:['MORE HOMES NOW!','Roofs for everyone!'],food:['FEED THE PEOPLE!','No more empty plates!'],air:['WE NEED AIR!','Breathe free!'],jobs:['JOBS FOR ALL!','Let us work!'],fun:['WE WANT FUN!','All work, no play? NO WAY!'],school:['SCHOOLS FOR KIDS!','Teach our children!'],health:['HEAL THE SICK!','Healers for all!'],peace:['STOP THE WAR!','Paint is for art, not war!'],freedom:['LET US VOTE!','Power to the people!'],justice:['DOWN WITH CORRUPTION!','Give back our credits!'],equal:['ALL SPECIES ARE EQUAL!','New species, same rights!']};
+const CNEED={housing:'housing',food:'food',air:'air',jobs:'jobs',fun:'fun',school:'school',health:'health'};
+function activistDaily(){if(S.c.length<10||rand()>.4)return;const pop=S.c.length,rl=S.mayor&&CM.get(S.mayor.id),rf=facOf(rl),cand=[];
+  for(const k in CNEED)if((S.cmp[k]||0)>=pop*.25)cand.push([k,(S.cmp[k]||0)/pop]);
+  if(S.war)cand.push(['peace',1.2]);if(!elective()&&avgHap()<58)cand.push(['freedom',1.1]);if(rf&&rf.al==='bad')cand.push(['justice',1.3]);if(S.c.some(c=>c.sp>=BASE_N)&&rand()<.2)cand.push(['equal',.5]);
+  if(!cand.length)return;S.lastCause=S.lastCause||{};const cl=cand.filter(([k])=>!(S.lastCause[k]>day()-3));if(!cl.length)return;const cause=cl.sort((a,b)=>b[1]-a[1])[0][0];S.lastCause[cause]=day();
+  const col=S.war&&cause==='peace'?colById(S.war.col):dramaCol();const act=S.c.filter(c=>c.col===col.id&&c.age>=16&&!c.transit&&c!==rl&&!(facOf(c)&&facOf(c).al==='bad')).sort((a,b)=>(b.soc||0)-(a.soc||0))[0];if(!act)return;
+  act.activist=(act.activist||0)+1;const crowd=S.c.filter(c=>c.col===col.id&&c.age>=12&&!c.transit&&rand()<.45).slice(0,14);if(!crowd.includes(act))crowd.unshift(act);
+  const now=performance.now(),[s1,s2]=CAUSES[cause];for(const c of crowd){c.rally=S.t+300;c.emo={t:'✊',until:now+8000}}
+  if(!catchingUp&&col.id===S.view){bubbles.push({cid:act.id,txt:s1,until:now+5000});if(crowd[1])bubbles.push({cid:crowd[1].id,txt:s2,from:now+1500,until:now+6500})}
+  if(rf&&rf.al==='bad'&&svcM('police').length>=2&&rand()<.5){act.jail=day()+1;log(`👮 CRACKDOWN! ${LT()} ${rl.fn} sent the ${svcN('police')} to break up a rally for "${s1}" on ${col.name}. Activist ${nameOf(act)} was thrown in jail for a day. The people are furious.`,'disaster',act.x,act.y,col.id);for(const c of crowd)c.fun=Math.max(0,c.fun-12);return}
+  log(`📢 RALLY on ${col.name}! Activist ${nameOf(act)} led ${crowd.length} citizens marching to the ${bName('hall')}. Signs read: "${s1}"`,'election',act.x,act.y,col.id);
+  if(CNEED[cause])S.demand={need:CNEED[cause],until:day()+3};
+  else if(cause==='peace'&&rand()<.35)endWar('protest');
+  else if((cause==='freedom'||cause==='justice')&&rand()<(avgHap()<45?.5:.22)){log(`✊ REVOLUTION! ${nameOf(act)} and the protesters took over the ${bName('hall')}. ${rl?nameOf(rl)+' was removed from power. ':''}The people will vote from now on.`,'election',act.x,act.y,col.id);sfx('fanfare');if(rl)rl.disgraced=1;if(elective()){S.lastElection=day();EVENTS.election()}else setGov(ageNow()>=4&&S.cols.length>=3?'federation':'democracy','The revolution won.')}}
+const RCAP=[100,130,170,220,280,350,400];
+function societyDaily(){if(S.r0!=null&&S.research>S.r0+RCAP[ageNow()])S.research=S.r0+RCAP[ageNow()];seasonDaily();for(const col of S.cols)claimTerritory(col);factionDaily();svcDaily();activistDaily();leaderCheck();fateDaily();S.r0=S.research;
+  if(!S.war&&!S.feud&&rand()<.08){const cs=S.cols.filter(c=>colC(c).length>=10&&c.terr&&new Set(c.terr.filter(s=>s>=0)).size>=2);const col=cs.length?pick(cs):null;if(col){const own=[...new Set(col.terr.filter(s=>s>=0))];{const a=pick(own),b=pick(own.filter(s=>s!==a));startWar(col,a,b,'A border fight over the best district got out of hand.')}}}}
+function societyHour(){warHour();svcHour();if(ageNow()>=5)for(const b of S.b)if(b.prog>=1&&b.cond<95)b.cond=Math.min(100,b.cond+.4)}
+const PRIM=new Map(),PFLAG={lab:'#a99af2',repair:'#f2b24a',med:'#ef6a5a',fab:'#9aa4c0',academy:'#62c6b2',trade:'#ffd35a',port:'#eef0f6',amuse:'#ff7ad9',water:'#5ab8ff',mall:'#ffb35a',sky:'#c9bdfa',apt:'#d8c08a'};
+function primSprite(b){const a=ageNow(),k=b.type+a;if(PRIM.has(k))return PRIM.get(k);const cv2=document.createElement('canvas');cv2.width=cv2.height=16;const g=cv2.getContext('2d');const R=(c,x,y,w,h)=>{g.fillStyle=c;g.fillRect(x,y,w,h)};
+  const wall=a?'#a59d90':'#8a6a4a',roof=a?'#b8643a':'#c9a25a',dark='#3a2a1e',t=b.type;
+  if(t==='farm'){R('#6b4a2e',1,4,14,11);for(let y=5;y<15;y+=3){R('#4f3620',1,y+1,14,1);for(let x=2;x<15;x+=2)R(a?'#e0c050':(x%4?'#c0304a':'#4c9a4a'),x,y,1,1)}}
+  else if(t==='galley'&&a===0){R('#6a5a4a',3,12,10,2);R('#ff8a3d',5,7,6,5);R('#ffd35a',7,8,2,4);R('#5a3a22',2,6,1,7);R('#5a3a22',13,6,1,7);R('#5a3a22',2,6,12,1);R('#333',6,5,4,2)}
+  else if(t==='o2'||t==='garden'||(t==='lab'&&a===0)){if(t==='lab'){R('#7f7a75',3,8,10,6);R('#9a958f',4,7,8,2);R('#ffd35a',7,4,2,2)}else for(const[x,y]of[[3,6],[10,4],[7,9]]){R('#5a3a22',x+1,y+3,1,4);R(t==='o2'?'#2f8a4a':'#5cba6a',x-1,y-2,5,5);R('#ffffff30',x,y-2,2,1)}}
+  else if(t==='hall'&&a===0){R('#7a6a5a',2,11,12,3);R('#ff8a3d',5,6,6,6);R('#ffd35a',7,7,2,4);R('#8a5a2a',13,1,2,11);R('#c9a25a',12,1,4,2);R('#e05a4a',12,4,4,1);R('#5aa0e0',12,6,4,1)}
+  else if(t==='water'&&a===0){R('#7a6a5a',1,4,14,11);R('#3c7cb8',2,5,12,9);R('#7ab8f0',4,7,3,1);R('#7ab8f0',9,10,3,1)}
+  else{const big=['hall','apt','sky','mall','amuse','trade','academy','port'].includes(t),x0=big?1:3,w=big?14:10;R(wall,x0,8,w,7);if(a)for(let x=x0;x<x0+w;x+=3)R('#00000020',x,8,1,7);
+    g.fillStyle=roof;g.beginPath();g.moveTo(x0-1,9);g.lineTo(8,big?2:3.5);g.lineTo(x0+w+1,9);g.closePath();g.fill();g.fillStyle='#00000030';g.fillRect(x0,8,w,1);R(dark,7,11,2,4);
+    if(a){R('#ffd35a',x0+1,10,2,2);R('#ffd35a',x0+w-3,10,2,2)}if(PFLAG[t]){R('#5a3a22',8,0,1,4);R(PFLAG[t],9,0,3,2)}}
+  PRIM.set(k,cv2);return cv2}
+function drawTerritory(col){if(!col.terr||cam.mode==='pov')return;const zw=W*T/ZX,zh=H*T/ZY,tr=col.terr,at=(x,y)=>x<0||y<0||x>=ZX||y>=ZY?-2:tr[x+y*ZX];
+  for(let z=0;z<ZX*ZY;z++){const s=tr[z];if(s<0||!SPECIES[s])continue;const zx=z%ZX,zy=Math.floor(z/ZX),x=zx*zw,y=zy*zh,war=S.war&&S.war.col===col.id&&(s===S.war.a||s===S.war.b),c=SPECIES[s].color;
+    ctx.fillStyle=c+(war?'24':'16');ctx.fillRect(x,y,zw,zh);ctx.strokeStyle=c+(war?'cc':'80');ctx.lineWidth=war?1.6:1;ctx.setLineDash([4,3]);ctx.beginPath();
+    if(at(zx,zy-1)!==s){ctx.moveTo(x,y+.5);ctx.lineTo(x+zw,y+.5)}if(at(zx,zy+1)!==s){ctx.moveTo(x,y+zh-.5);ctx.lineTo(x+zw,y+zh-.5)}if(at(zx-1,zy)!==s){ctx.moveTo(x+.5,y);ctx.lineTo(x+.5,y+zh)}if(at(zx+1,zy)!==s){ctx.moveTo(x+zw-.5,y);ctx.lineTo(x+zw-.5,y+zh)}ctx.stroke();ctx.setLineDash([]);
+    if(at(zx-1,zy)!==s&&at(zx,zy-1)!==s){ctx.font='bold 5px sans-serif';ctx.textAlign='left';const lb=`🚩 ${SPECIES[s].many}${col.occ&&col.occ[z]?' ⚔️':''}`;ctx.fillStyle='#070914b0';ctx.fillRect(x+2,y+2,ctx.measureText(lb).width+4,7);ctx.fillStyle=c;ctx.fillText(lb,x+4,y+7.5)}}}
+function drawDrones(col){if(ageNow()<5)return;const t=performance.now();for(let i=0;i<10;i++){const x=W*T*(.5+.42*Math.sin(t/4000*(1+i*.13)+i)),y=H*T*(.5+.4*Math.cos(t/5200*(1+i*.07)+i*2))-10;
+  ctx.fillStyle='#0005';ctx.fillRect(x-2,y+12,4,1);ctx.fillStyle='#cfd6e8';ctx.fillRect(x-3,y,6,2);ctx.fillStyle='#8a93ad';ctx.fillRect(x-4,y-1,2,1);ctx.fillRect(x+2,y-1,2,1);ctx.fillStyle=((t/200+i)|0)%2?'#5af0ff':'#ff5a8a';ctx.fillRect(x-.5,y+2,1,1)}}
+function drawWarBanner(cw){const w=S.war;if(!w||w.col!==S.view||!SPECIES[w.a]||!SPECIES[w.b])return;const txt=`⚔️ PAINT WAR · ${SPECIES[w.a].many} ${w.ra} – ${w.rb} ${SPECIES[w.b].many}`;
+  ctx.font=`bold ${14*dpr}px sans-serif`;const tw=ctx.measureText(txt).width+24*dpr,x=(cw-tw)/2,y=10*dpr;ctx.fillStyle='#2a0d14e6';ctx.strokeStyle='#ef6a5a';ctx.lineWidth=2*dpr;ctx.beginPath();ctx.roundRect(x,y,tw,28*dpr,8*dpr);ctx.fill();ctx.stroke();ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(txt,cw/2,y+14*dpr);ctx.textAlign='left';ctx.textBaseline='alphabetic'}
+function renderPower(){const el=$('power');if(!el)return;const rl=S.mayor&&CM.get(S.mayor.id),rf=facOf(rl),col=colById(S.view);
+  const facs=(S.fac||[]).slice().sort((a,b)=>b.mem-a.mem).map(f=>{const l=CM.get(f.leader);return`<li><b>${AL[f.al].e} ${f.n}</b> <span class="al ${f.al}">${AL[f.al].w}</span> · ${f.mem} members${l?` · led by ${l.fn} the ${spOf(l).one}`:''}</li>`}).join('')||'<li class="hint">No factions yet. Charismatic citizens start them on their own.</li>';
+  const own={};for(const s of(col.terr||[]))if(s>=0)own[s]=(own[s]||0)+1;const terr=Object.entries(own).sort((a,b)=>b[1]-a[1]).map(([s,n])=>`<span style="color:${SPECIES[s].color}">${SPECIES[s].many} ${n}</span>`).join(' · ')||'unclaimed';
+  el.innerHTML=`<div class="pw"><div><span>Age</span><b>${AGES[ageNow()].e} ${AGES[ageNow()].n}</b></div>${(S.lessons&&(S.lessons.yes+S.lessons.no))?`<div><span>After resets</span><b>remembered ${S.lessons.yes}× · forgot ${S.lessons.no}×</b></div>`:''}<div><span>Government</span><b>${gov().n}</b></div><div><span>${LT()} of Starhaven</span><b>${rl?`${rl.fn} the ${spOf(rl).one}${rf?` (${AL[rf.al].e} ${rf.n})`:''}`:'nobody yet'}</b></div>
+    <div><span>Districts on ${col.name}</span><b>${terr}</b></div><div><span>Services</span><b>${S.svc&&Object.keys(S.svc).length?Object.keys(S.svc).map(k=>`${SVC[k].e} ${svcN(k)} ${svcM(k).length}`).join(' · '):'none yet'} · 🙋 ${S.c.filter(c=>c.vol).length}</b></div>${ageNow()>=5?`<div><span>${ageNow()===6?'Quantum instability':'AI power'}</span><b style="color:${(S.aip||0)>=80?'#ef6a5a':'inherit'}">${Math.round(S.aip||0)}% ${(S.aip||0)>=80?'⚠️ DANGER':''}</b></div>`:''}${(S.cycle||1)>1?`<div><span>Cycle</span><b>${S.cycle} (the world has reset ${S.cycle-1}×)</b></div>`:''}<div><span>War</span><b>${S.war&&SPECIES[S.war.a]?`⚔️ ${SPECIES[S.war.a].many} ${S.war.ra} – ${S.war.rb} ${SPECIES[S.war.b].many} on ${colById(S.war.col).name}`:'🕊️ at peace'}</b></div></div><h3>Factions</h3><ul class="facs">${facs}</ul>`}
+
+/* ---------- public services + the fate of technology ---------- */
+const SVC={police:{n:['Tribal Watch','Town Guard','Police','Star Patrol','Star Patrol','Robo-Police','Quantum Wardens'],e:'👮',col:'#4a7aff',per:15},fire:{n:['Bucket Line','Fire Brigade','Fire Department','Fire & Rescue','Fire & Rescue','Drone Fire Corps','Phase Firefighters'],e:'🚒',col:'#ff5a3a',per:20},army:{n:['Spear Band','Militia','Army','Space Marines','Space Marines','Defense Drones','Quantum Guard'],e:'🪖',col:'#5aa05a',per:25}};
+const svcN=k=>SVC[k].n[Math.min(ageNow(),SVC[k].n.length-1)];
+const svcM=(k,col)=>S.c.filter(c=>c.role===k&&!c.transit&&(col==null||c.col===col));
+function svcForm(k,why){S.svc=S.svc||{};if(S.svc[k])return;S.svc[k]=day();svcStaff();const n=svcM(k).length;log(`${SVC[k].e} The ${svcN(k)} was formed! ${why} ${n} citizen${n===1?'':'s'} signed up.`,'colony',24,21,S.view)}
+function svcStaff(){S.svc=S.svc||{};const pop=S.c.length;
+  for(const k in SVC){if(!S.svc[k])continue;const want=Math.max(1,Math.ceil(pop/(k==='army'&&S.war?10:SVC[k].per)));let have=svcM(k);
+    if(have.length>want+1)have.slice(want).forEach(c=>c.role=null);
+    const pool=S.c.filter(c=>!c.role&&!c.transit&&c.age>=18&&c.age<lifeOf(c)*.75&&!(k!=='army'&&facOf(c)&&facOf(c).al==='bad')).sort((a,b)=>(k==='army'?b.hp-a.hp:(b.al||0)-(a.al||0))+rand()*20-10);
+    while(have.length<want&&pool.length){const c=pool.shift();c.role=k;have.push(c)}}
+  for(const c of S.c)c.vol=c.age>=12&&(c.al||0)>.45&&!c.role?1:0}
+function svcDaily(){S.svc=S.svc||{};const pop=S.c.length;
+  if(!S.svc.police&&(pop>=20||S.c.some(c=>c.villain)))svcForm('police','Too many strange things happening at night.');
+  if(!S.svc.fire&&(pop>=26||S.b.some(b=>b.prog>=1&&b.cond<10)))svcForm('fire','After the last fire, nobody wanted to wait for help again.');
+  if(!S.svc.army&&(S.war||(S.wars||[]).length))svcForm('army','The paint wars showed they needed defenders.');
+  svcStaff();
+  const vols=S.c.filter(c=>c.vol);if(vols.length>=3&&rand()<.5){const col=dramaCol(),bs=S.b.filter(b=>b.col===col.id&&b.prog>=1&&b.cond<80).slice(0,3);bs.forEach(b=>b.cond=Math.min(100,b.cond+8));let fed=0;for(const c of S.c)if(c.col===col.id&&c.hu<40){c.hu+=20;fed++}
+    if(rand()<.5)log(`🙋 ${vols.filter(c=>c.col===col.id).length||vols.length} volunteers spent the day on ${col.name}: ${bs.length?'patching up '+bs.length+' buildings':''}${bs.length&&fed?' and ':''}${fed?'bringing meals to '+fed+' hungry neighbors':''}${!bs.length&&!fed?'planting flowers and picking up litter':''}.`,'life',col.cx,col.cy,col.id)}}
+function svcHour(){if(!S.svc||!S.svc.fire)return;for(const b of S.b){if(b.prog<1||b.cond>=10)continue;const ff=svcM('fire',b.col).length;if(!ff)continue;b.cond=Math.min(100,b.cond+6*ff);
+  if(b.cond>=10&&rand()<.6){log(`🚒 The ${svcN('fire')} put out the fire at the ${bName(b.type)} on ${colById(b.col).name}. ${pick(svcM('fire',b.col)).fn} carried out the last bucket.`,'life',b.x,b.y,b.col);fx({k:'spark',col:b.col,x:b.x,y:b.y,dur:1500})}}}
+function policeStop(f,ld,what){const p=svcM('police');if(!p.length||rand()>Math.min(.6,p.length*.1))return false;const crook=pick(S.c.filter(c=>c.fac===f.id))||ld,cop=pick(p);crook.fac=0;crook.jail=day()+2;
+  log(`👮 BUSTED! Officer ${cop.fn} of the ${svcN('police')} caught ${nameOf(crook)} of the ${f.n} trying to ${what}. Off to jail!`,'disaster',cop.x,cop.y,cop.col);return true}
+const AIMSG={50:'🤖 The colony\'s AI started making decisions nobody asked it to make. Some citizens are nervous.',80:'🤖 WARNING: the AI rerouted the power grid on its own and won\'t say why. The Good factions are calling for a shutdown.'};
+function fateDaily(){const a=ageNow();if(a<5)return;S.aip=(S.aip||0)+(a===5?6+rand()*10:3+rand()*5);
+  for(const k of[50,80])if(S.aip>=k&&!(S.aiw||{})[k]){S.aiw=S.aiw||{};S.aiw[k]=1;log(a===6?AIMSG[k].replace('AI','quantum core'):AIMSG[k],'crisis',24,21,S.view)}
+  if(S.aip<100)return;S.aiw={};const good=S.c.filter(c=>facOf(c)&&facOf(c).al==='good').length/Math.max(1,S.c.length),p=Math.min(.9,.25+good*.9+(S.wis||0)*.12)*(a===6?1.1:1);
+  if(rand()<p){S.aip=35;const hero=pick(S.c.filter(c=>facOf(c)&&facOf(c).al==='good'))||pick(S.c);
+    if(a===5){S.research=Math.max(S.research,AGES[6].at*PACE);log(`⚛️ CLOSE CALL! ${hero?nameOf(hero)+' and the Good factions':'The colony'} took control of the AI just in time. Instead of ruling them, it now works FOR them, and together they cracked quantum physics.`,'tech',24,21,S.view)}
+    else log(`⚛️ The quantum core almost tore reality apart, but ${hero?nameOf(hero):'the colony'} stabilized it. The Quantum Age goes on.`,'tech',24,21,S.view);return}
+  greatReset(a)}
+function greatReset(a){const cyc=S.cycle=(S.cycle||1)+1;
+  log(`💥 THE GREAT RESET! ${a===5?'The AI became too powerful. It shut down every machine, every ship, every light.':'The quantum core collapsed and scrambled every machine in existence.'} The survivors walked out into the dark, picked up sticks and stones, and lit a fire. Cycle ${cyc} of Starhaven begins in the Stone Age.`,'disaster',24,21,S.view);
+  sfx('boom');shake=performance.now()+1800;S.research=0;S.tech=0;S.age=0;S.era=1;S.aip=0;PRIM.clear();S.war=null;S.feud=null;
+  for(const b of S.b){if(b.type==='sky'){b.type='apt'}if(['port','mall','lab','fab'].includes(b.type)||rand()<.25)b.cond=Math.min(b.cond,8)}
+  for(const c of S.c){c.fac=0;c.role=null;c.xp=Math.min(c.xp||0,40)}S.fac=[];S.svc={};S.gov='tribe';pickRuler();
+  for(const col of S.cols){col.terr=null;col.occ={};fx({k:'spark',col:col.id,x:col.cx,y:col.cy,dur:3000})}lessonsAfterReset()}
+
+
+function drawSeason(col){if(cam.mode==='pov')return;const se=seasonOf(col);if(se.t){ctx.fillStyle=se.t;ctx.fillRect(0,0,W*T,H*T)}if(!se.v)return;const t=performance.now()/1000,n=se.v==='mist'?14:70;
+  for(let i=0;i<n;i++){const sx=(i*137.3)%(W*T),sy=(i*71.9)%(H*T);let x,y;
+    if(se.v==='snow'){x=(sx+Math.sin(t+i)*8+t*6)%(W*T);y=(sy+t*22)%(H*T);ctx.fillStyle='#ffffffd0';ctx.fillRect(x,y,1.6,1.6)}
+    else if(se.v==='rain'){x=(sx+t*40)%(W*T);y=(sy+t*160)%(H*T);ctx.strokeStyle='#a8c8ff70';ctx.lineWidth=.5;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-2,y+6);ctx.stroke()}
+    else if(se.v==='leaf'||se.v==='petal'){x=(sx+Math.sin(t*.8+i)*12+t*10)%(W*T);y=(sy+t*14)%(H*T);ctx.fillStyle=se.v==='leaf'?['#e0702a','#c84a2a','#e8a83a'][i%3]:'#ffc0dc';ctx.fillRect(x,y,2,1.4)}
+    else if(se.v==='spore'){x=(sx+Math.sin(t*.5+i)*10)%(W*T);y=(sy-t*6+H*T*10)%(H*T);ctx.fillStyle=`rgba(180,255,140,${.4+.3*Math.sin(t*2+i)})`;ctx.beginPath();ctx.arc(x,y,1,0,7);ctx.fill()}
+    else if(se.v==='dust'){x=(sx+t*55)%(W*T);y=(sy+Math.sin(t+i)*6)%(H*T);ctx.fillStyle='#d0a87040';ctx.fillRect(x,y,4,1)}
+    else if(se.v==='heat'){x=sx;y=(sy-t*10+H*T*10)%(H*T);ctx.fillStyle='#ffb06018';ctx.fillRect(x,y,6,1)}
+    else if(se.v==='star'){if(i%9)continue;const q=((t*.4+i*.13)%1);x=sx+q*80;y=sy*.4+q*50;ctx.strokeStyle=`rgba(255,230,180,${1-q})`;ctx.lineWidth=.8;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-10,y-6);ctx.stroke()}
+    else if(se.v==='mist'){x=(sx+t*4)%(W*T);y=sy;ctx.fillStyle='#e8eef830';ctx.beginPath();ctx.ellipse(x,y,40,10,0,0,7);ctx.fill()}}}
+const SEASMSG={farm:['Farms are booming.','Farms are struggling.'],hunger:['','Everyone is hungrier than usual.'],ill:['People are healthier than usual.','Sickness is spreading faster.'],decay:['Buildings are holding up well.','Buildings are taking a beating.'],o2:['The air feels fresher.','Air is harder to come by.']};
+function seasonDaily(){if(day()%(YEAR/4)!==1&&YEAR/4!==1)return;for(const col of S.cols){const se=seasonOf(col),fx2=Object.entries(se.m).map(([k,v])=>SEASMSG[k]?SEASMSG[k][v>1===(k==='farm'||k==='o2'&&false)?0:1]:'').filter(Boolean);
+    const eff=Object.entries(se.m).map(([k,v])=>{const M=SEASMSG[k];if(!M)return'';const good=(k==='farm')?v>1:v<1;return M[good?0:1]}).filter(Boolean).join(' ');
+    log(`${se.e} ${se.n} arrived on ${col.name}. ${eff||'A gentle season.'}`,'life',col.cx,col.cy,col.id);
+    if(se.n==='Autumn'&&colC(col).length>=8){for(const c of colC(col))c.fun=Math.min(100,c.fun+20);log(`🌾 HARVEST FESTIVAL on ${col.name}! Everyone brought food to the ${bName('hall')} and danced until midnight.`,'party',col.cx,col.cy,col.id)}}}
+function lessonsAfterReset(){const cyc=S.cycle||1;if(cyc<2)return;const remember=rand()<.5;S.lessons=S.lessons||{yes:0,no:0};
+  if(remember){S.lessons.yes++;S.wis=(S.wis||0)+1;S.research+=250*S.wis;log(`📜 THE ELDERS REMEMBER. Around the fire, the oldest survivors tell legends of "the thinking machine that ended the world." The young ones listen. Ancient ruins give them a head start, and this time, they swear, they'll be careful.`,'tech',24,21,S.view)}
+  else{S.lessons.no++;log(`🌫️ THE OLD WORLD IS FORGOTTEN. The ruins are just strange rocks now. Nobody remembers what happened, and history may be about to repeat itself.`,'tech',24,21,S.view)}}
 
 /* ---------- drama engine ---------- */
 let FX=[];
@@ -991,7 +1205,7 @@ const EVENTS={
     col.scorch=(col.scorch||[]).concat([{x:b.x,y:b.y,t:S.t}]).slice(-12);shake=performance.now()+700;
     fx({k:'meteor',col:col.id,x:b.x,y:b.y,dur:2200,seed:Math.random()*1000});b.cond=Math.min(b.cond,6);let dead=0;
     for(const c of S.c.slice())if(c.col===col.id&&!c.inB&&!c.transit&&!c.ctrl&&Math.hypot(c.x-b.x,c.y-b.y)<1.6&&rand()<.5){c.cause='a meteor strike';c.hp=0;dead++}
-    log(`${by?by+' sent a METEOR! ':'METEOR STRIKE! '}A meteor smashed into the ${TYPES[b.type].name} on ${col.name}${dead?` and ${dead} citizen${dead>1?'s':''} didn't make it`:'. Nobody was hurt'}.`,'disaster',b.x,b.y,col.id);sfx('boom')},
+    log(`${by?by+' sent a METEOR! ':'METEOR STRIKE! '}A meteor smashed into the ${bName(b.type)} on ${col.name}${dead?` and ${dead} citizen${dead>1?'s':''} didn't make it`:'. Nobody was hurt'}.`,'disaster',b.x,b.y,col.id);sfx('boom')},
   ufo(col,by){const c=randOutside(col);if(!c)return;fx({k:'ufo',col:col.id,cid:c.id,x:c.x,y:c.y,dur:4200});
     setTimeout(()=>{if(!CM.has(c.id))return;leaveJob(c);c.transit=1;c.inB=0;c.path=null;c.abd=day()+2+((rand()*3)|0);c.act='flying'},2600);
     log(`${by?by+' called the aliens! ':''}A UFO appeared over ${col.name} and BEAMED UP ${nameOf(c)}! Nobody knows if they'll come back.`,'disaster',c.x,c.y,col.id);sfx('ufo')},
@@ -1021,29 +1235,30 @@ const EVENTS={
     for(let k=0;k<6;k++)setTimeout(()=>fx({k:'firework',col:col.id,x:f.x+(Math.random()-.5)*6,y:f.y-1,dur:1600,h:330+Math.random()*30}),k*250);
     f.emo={t:'💞',until:performance.now()+6000};m.emo={t:'💞',until:performance.now()+6000};
     log(`💞 ${by||'A viewer'} played MATCHMAKER! ${nameOf(f)} and ${nameOf(m)} fell in love${kid?` and welcomed baby ${kid.fn} the ${spOf(kid).one}`:'. A hybrid baby could be on the way'}!`,'party',f.x,f.y,col.id);sfx('fanfare')},
-  election(){const cands=S.c.filter(c=>!c.transit&&c.age>=25&&!c.villain).sort((a,b)=>(b.agent?20:0)+b.hap-((a.agent?20:0)+a.hap)).slice(0,2);if(cands.length<2)return;
+  election(){const cs=c=>(c.agent?20:0)+c.hap*.5+(c.soc||40)*.7+(facOf(c)?facOf(c).mem*2+(facOf(c).leader===c.id?15:0):0)+rand()*8;const cands=S.c.filter(c=>!c.transit&&c.age>=25&&!c.villain&&!c.disgraced).sort((a,b)=>cs(b)-cs(a)).slice(0,2);if(cands.length<2)return;
     const pol=['farms','fun','science','expand'],PN={farms:'more food',fun:'more fun',science:'more science',expand:'reach new planets'};const[a,b]=cands;a.pol=a.pol||pick(pol);b.pol=b.pol||pick(pol.filter(x=>x!==a.pol));
-    let va=0,vb=0;for(const v of S.c){if(v.age<18||v.transit)continue;const sa=(v.sp===a.sp?2:0)+(v.fr&&v.fr[a.id]||0)+rand()*2,sb=(v.sp===b.sp?2:0)+(v.fr&&v.fr[b.id]||0)+rand()*2;if(sa>=sb)va++;else vb++}
+    let va=0,vb=0;for(const v of S.c){if(v.age<18||v.transit)continue;const vb2=(v,c)=>(c.soc||40)/25+(v.fac&&v.fac===c.fac?6:0)+(facOf(c)?(facOf(c).al==='good'?(v.al||0):facOf(c).al==='bad'?-(v.al||0):0)*2:0);const sa=(v.sp===a.sp?2:0)+(v.fr&&v.fr[a.id]||0)+rand()*2+vb2(v,a),sb=(v.sp===b.sp?2:0)+(v.fr&&v.fr[b.id]||0)+rand()*2+vb2(v,b);if(sa>=sb)va++;else vb++}
     const w=va>=vb?a:b;S.mayor={id:w.id,pol:w.pol,day:day()};
     bubbles.push({cid:a.id,txt:`Vote for me! I promise ${PN[a.pol]}!`,until:performance.now()+5000},{cid:b.id,txt:`No, vote for ME! ${PN[b.pol]}!`,from:performance.now()+1500,until:performance.now()+6500});
-    log(`ELECTION RESULTS: ${nameOf(w)} beat ${nameOf(w===a?b:a)}, ${Math.max(va,vb)} votes to ${Math.min(va,vb)}. New Mayor's promise: ${PN[w.pol]}.`,'election',w.x,w.y,w.col);sfx('fanfare')},
+    log(`ELECTION RESULTS: ${nameOf(w)} beat ${nameOf(w===a?b:a)}, ${Math.max(va,vb)} votes to ${Math.min(va,vb)}. New ${LT()} of Starhaven${facOf(w)?` (${AL[facOf(w).al].e} ${facOf(w).n})`:''}. Promise: ${PN[w.pol]}.`,'election',w.x,w.y,w.col);sfx('fanfare')},
 };
 const EV_UI=[['match','💞 Matchmaker (new species)'],['meteor','☄️ Meteor'],['ufo','🛸 Alien abduction'],['party','🎉 Party'],['power','⚡ Superpower'],['crystal','💎 Crystal find'],['plague','🦠 Plague'],['boom','👶 Baby boom'],['election','🗳️ Election']];
 function dramaRoll(){
   const r=rand(),col=dramaCol();
-  if(day()-(S.lastElection||0)>=6&&S.c.length>=10){S.lastElection=day();EVENTS.election();return}
+  if(elective()&&day()-(S.lastElection||0)>=6&&S.c.length>=10){S.lastElection=day();EVENTS.election();return}
   if(r<.10)EVENTS.meteor(col);else if(r<.16)EVENTS.ufo(col);else if(r<.22)EVENTS.party(col);else if(r<.27)EVENTS.crystal(col);
   else if(r<.31)EVENTS.plague(col);else if(r<.36)EVENTS.feud();else if(r<.40)EVENTS.villain();else if(r<.43)EVENTS.boom(col);
 }
 function villainTick(){const v=S.c.find(c=>c.villain&&!c.transit);if(!v)return;const h=hour();
   if((h>=23||h<4)&&rand()<.25){const bs=S.b.filter(b=>b.col===v.col&&b.prog>=1&&b.cond>20&&b.type!=='hall');if(bs.length){const b=pick(bs);b.cond=5;
-    log(`SABOTAGE! Someone wrecked the ${TYPES[b.type].name} on ${colById(v.col).name} in the night. Who could it be?`,'disaster',b.x,b.y,v.col);sfx('boom')}}
-  if(h===12&&rand()<(S.c.some(c=>c.agent&&c.col===v.col)?.35:.15)){const det=S.c.find(c=>c.agent&&c.col===v.col)||randOutside(colById(v.col));
+    log(`SABOTAGE! Someone wrecked the ${bName(b.type)} on ${colById(v.col).name} in the night. Who could it be?`,'disaster',b.x,b.y,v.col);sfx('boom')}}
+  if(h===12&&rand()<(S.c.some(c=>c.agent&&c.col===v.col)?.35:.15)+svcM('police',v.col).length*.06){const det=S.c.find(c=>c.agent&&c.col===v.col)||randOutside(colById(v.col));
     log(`CAUGHT! ${det?det.fn+' found proof: ':''}${nameOf(v)} was the saboteur all along! They've been exiled on a one-way shuttle.`,'disaster',v.x,v.y,v.col);sfx('fanfare');
     leaveHome(v);leaveJob(v);const p=v.partner&&CM.get(v.partner);if(p)p.partner=0;S.c=S.c.filter(x=>x!==v);CM.delete(v.id)}}
 function dailyDrama(){
   for(const c of S.c)if(c.abd&&day()>=c.abd){c.abd=0;c.transit=0;const col=colById(c.col),h=hallOf(col.id);c.x=h.x;c.y=h.y;c.inB=h.id;c.until=S.t;if(!c.pw){c.pw=pick(PK);c.pwOn=1}
     log(`${nameOf(c)} was RETURNED by the aliens! They seem different now... they have ${POWERS[c.pw]}.`,'disaster',h.x,h.y,col.id)}
+  if(S.feud&&day()>=S.feud.until&&rand()<.4){const fc=S.cols.find(c=>colC(c).filter(x=>x.sp===S.feud.a).length>=3&&colC(c).filter(x=>x.sp===S.feud.b).length>=3);if(fc){const f0=S.feud;S.feud=null;startWar(fc,f0.a,f0.b,'The feud boiled over.')}}
   if(S.feud&&day()>=S.feud.until){log(`Peace treaty! The ${SPECIES[S.feud.a].many} and ${SPECIES[S.feud.b].many} shook hands (and tentacles).`,'party',24,21,S.view);S.feud=null}
 }
 const INSULTS=[["Your species smells like burnt toast.","At least we don't leave slime on the doorknobs!"],["Get out of our plaza!","It's a public plaza, genius."],["You took the best pod!","Finders keepers!"],["Your kind can't even build a fence.","We built HALF this colony!"],["Nice face. Did a meteor hit it?","Nice manners. Did you have any?"]];
@@ -1116,7 +1331,7 @@ function quickReply(c,q){const ql=q.toLowerCase(),sp=spOf(c),col=colById(c.col),
   if(W(/\b(joke|funny)\b/))return pick(JOKES).join(' ');
   if(W(/\b(power|superpower|powers)\b/))return c.pwOn?`I have ${POWERS[c.pw]}. Tell me to use it!`:'No powers. Unless napping counts.';
   if(W(/\b(love|partner|date|girlfriend|boyfriend|married|marry)\b/))return p?`${p.fn} is my everything. Well, ${p.fn} and snacks.`:`Still single. Tell me to find a partner!`;
-  if(W(/\b(job|work|do for a living)\b/))return`I'm ${/^[aeiou]/i.test(SKILLS[c.skill])?'an':'a'} ${SKILLS[c.skill].toLowerCase()}${jb?' at the '+TYPES[jb.type].name:', but I need a job'}. ${TH.skill[c.skill]}`;
+  if(W(/\b(job|work|do for a living)\b/))return`I'm ${/^[aeiou]/i.test(SKILLS[c.skill])?'an':'a'} ${SKILLS[c.skill].toLowerCase()}${jb?' at the '+bName(jb.type):', but I need a job'}. ${TH.skill[c.skill]}`;
   if(W(/^(hi|hello|hey|yo|sup|howdy)\b/))return pick([`Hi! I'm ${c.fn}. Tell me to do something!`,'Oh! A voice from the sky! Hello!','Hello, mysterious stranger.']);
   return pick([`Hmm, I didn't quite get that. You can tell me to go to the park, eat, sleep, work, build something, dance, or find a partner!`,`I'm just a ${sp.one}, so keep it simple! Try "go to the park" or "build a water park".`,`Huh? You lost me there. Ask me how I'm doing, or tell me to go eat, dance, or build something!`])}
 function quickReplyOld(c,q){const ql=q.toLowerCase(),sp=spOf(c);
@@ -1166,11 +1381,11 @@ function runCommand(c,q){
   // build
   if(W(/\b(build|make|construct|create|put up)\b/)){const hit=BUILDK.find(([re])=>re.test(ql));if(!hit)return{say:'Build what? Try a farm, a park, a water park, an amusement park, a mall or a skyscraper!'};
     const t=hit[1],lock=(t==='apt'&&S.tech<1)||(t==='port'&&S.tech<2)||(t==='sky'&&S.tech<3)||(['amuse','water','mall'].includes(t)&&S.tech<2);
-    if(lock)return{say:`We haven't invented the tech for a ${TYPES[t].name} yet. The scientists are working on it!`,done:'refused: tech not invented'};
-    if(S.credits<TYPES[t].cost)return{say:`A ${TYPES[t].name} costs ${TYPES[t].cost} credits and we only have ${Math.floor(S.credits)}. Maybe later!`,done:'refused: not enough credits'};
-    const r=build(t,col,`${c.fn} asked for it after a voice from the sky suggested it`);if(!r)return{say:`There's no room for a ${TYPES[t].name} here right now.`};
+    if(lock)return{say:`We haven't invented the tech for a ${bName(t)} yet. The scientists are working on it!`,done:'refused: tech not invented'};
+    if(S.credits<TYPES[t].cost)return{say:`A ${bName(t)} costs ${TYPES[t].cost} credits and we only have ${Math.floor(S.credits)}. Maybe later!`,done:'refused: not enough credits'};
+    const r=build(t,col,`${c.fn} asked for it after a voice from the sky suggested it`);if(!r)return{say:`There's no room for a ${bName(t)} here right now.`};
     const nb=S.b[S.b.length-1];goTo(c,{b:nb.id,act:'visit',dur:40});cam.talkUntil=performance.now()+20000;
-    return{say:pick([`On it! I convinced the council. A ${TYPES[t].name} is going up!`,`Great idea! Construction on the ${TYPES[t].name} starts now. I'll go supervise.`]),done:`convinced the council to build a ${TYPES[t].name}, walking over to supervise`}}
+    return{say:pick([`On it! I convinced the council. A ${bName(t)} is going up!`,`Great idea! Construction on the ${bName(t)} starts now. I'll go supervise.`]),done:`convinced the council to build a ${bName(t)}, walking over to supervise`}}
   // travel to planet
   const pl=S.cols.find(x=>new RegExp('\\b'+x.name.toLowerCase()+'\\b').test(ql));
   if(pl&&W(/\b(go|move|fly|travel|visit|take a ship|shuttle)\b/)){if(pl.id===c.col)return{say:`I'm already on ${pl.name}!`};if(!portOf(col)||!portOf(pl))return{say:`We need Spaceports on both planets to fly there.`};
@@ -1178,7 +1393,7 @@ function runCommand(c,q){
   if(W(/\b(dance|party|celebrate|boogie)\b/)){c.fun=100;react(c,'joke');c.jump=performance.now()+3000;for(let k=0;k<4;k++)setTimeout(()=>fx({k:'firework',col:c.col,x:c.x+(Math.random()-.5)*4,y:c.y-1,dur:1500,h:Math.random()*360}),k*300);
     return{say:pick(['Watch these moves! 💃','Party time! Everybody dance!','I was BORN for this.']),done:'started dancing'}}
   if(W(/\b(fix|repair)\b/)){const bs=S.b.filter(b=>b.col===c.col&&b.prog>=1&&b.cond<70).sort((a,b)=>a.cond-b.cond);if(!bs.length)return{say:'Everything here is in great shape already!'};
-    const b=bs[0];b.cond=Math.min(100,b.cond+(c.skill==='fixer'?70:40));goTo(c,{b:b.id,act:'visit',dur:40});return{say:`Grabbing my tools! Heading to fix the ${TYPES[b.type].name}.`,done:`went to repair the ${TYPES[b.type].name}`}}
+    const b=bs[0];b.cond=Math.min(100,b.cond+(c.skill==='fixer'?70:40));goTo(c,{b:b.id,act:'visit',dur:40});return{say:`Grabbing my tools! Heading to fix the ${bName(b.type)}.`,done:`went to repair the ${bName(b.type)}`}}
   {const spHit=SPECIES.findIndex(x=>new RegExp('\\b('+x.one.toLowerCase()+'|'+x.many.toLowerCase()+')\\b').test(ql));
    if(spHit>=0&&W(/\b(date|marry|partner|love|mate|match|find)\b/)){if(c.age<18)return{say:"I'm too young for that!"};
     if(c.partner){const op=CM.get(c.partner);if(op&&op.sp===spHit)return{say:`I'm already with ${op.fn} the ${SPECIES[spHit].one}!`};}
@@ -1193,7 +1408,7 @@ function runCommand(c,q){
     if(!o)return{say:'There is nobody single around here. Maybe on another planet?'};c.partner=o.id;o.partner=c.id;findHome(o);if(o.home!==c.home)findHome(c);
     log(`${nameOf(c)} took advice from the sky and asked ${nameOf(o)} out. ${o.fn} said YES!`,'life',c.x,c.y,c.col);return{say:`I asked ${o.fn}... and they said YES! 💕`,done:`asked ${o.fn} to be partners and they said yes`}}
   if(W(/\b(have a baby|start a family|have kids|have a kid|make a baby)\b/)){const p=c.partner&&CM.get(c.partner),h=c.home&&BM.get(c.home);if(!p)return{say:'I need a partner first! Tell me to find one.'};
-    const mom=c.sex==='f'?c:p;if(!h)return{say:"We don't have a home yet! Tell me to build a house."};if(h.res.length>=capOf(h))return{say:`Our ${TYPES[h.type].name} is full (${h.res.length}/${capOf(h)}). Tell me to build a house or a tower!`};if(mom.age>lifeOf(mom)*.55||mom.age<18)return{say:'Not at our age!'};if(day()-(c.famDay||-9)<2)return{say:'We JUST had a baby! Give us a couple of days.'};
+    const mom=c.sex==='f'?c:p;if(!h)return{say:"We don't have a home yet! Tell me to build a house."};if(h.res.length>=capOf(h))return{say:`Our ${bName(h.type)} is full (${h.res.length}/${capOf(h)}). Tell me to build a house or a tower!`};if(mom.age>lifeOf(mom)*.55||mom.age<18)return{say:'Not at our age!'};if(day()-(c.famDay||-9)<2)return{say:'We JUST had a baby! Give us a couple of days.'};
     c.famDay=day();const ksp=c.sp===p.sp?c.sp:hybridOf(c.sp,p.sp);const k=newCitizen(col,ksp,rand()<.5?'f':'m',0);k.x=h.x;k.y=h.y;k.inB=h.id;h.res.push(k.id);k.home=h.id;S.sp[ksp].b++;
     log(`Baby ${k.fn} was born to ${c.fn} and ${p.fn} on ${col.name}, thanks to some encouragement from the sky!`,'birth',h.x,h.y,col.id);return{say:`Meet baby ${k.fn}! 👶`,done:`had a baby named ${k.fn}`}}
   if(W(/\b(use your power|use power|superpower|fly)\b/)){if(!c.pwOn)return{say:"I don't have any powers! I wish."};
@@ -1201,7 +1416,7 @@ function runCommand(c,q){
     if(c.pw==='heal'){const n=S.c.filter(x=>x.col===c.col&&x.sick);for(const x of n){x.sick=0;x.hp=100}return{say:`Healing touch! ${n.length} sick citizens feel better!`,done:'healed everyone who was sick'}}
     if(c.pw==='breath'){col.o2+=200;return{say:'Fresh air for everyone! +200 oxygen!',done:'made 200 oxygen'}}
     if(c.pw==='mind'){S.research+=40;return{say:'BRAINSTORM! I just solved three science problems.',done:'boosted research'}}
-    if(c.pw==='build'){const b=S.b.find(b=>b.col===c.col&&b.prog<1);if(b){b.prog=1;b.cond=100;return{say:`Hnnng! The ${TYPES[b.type].name} is done!`,done:'finished a building with telekinesis'}}return{say:'Nothing to build right now!'}}
+    if(c.pw==='build'){const b=S.b.find(b=>b.col===c.col&&b.prog<1);if(b){b.prog=1;b.cond=100;return{say:`Hnnng! The ${bName(b.type)} is done!`,done:'finished a building with telekinesis'}}return{say:'Nothing to build right now!'}}
     c.jump=performance.now()+2500;return{say:c.pw==='flight'?'WHOOSH! Did you see that?!':'ZOOM! Faster than light!',done:'showed off their power'}}
   if(W(/\b(follow|come here|come back|stay|stop|wait)\b/)){c.path=null;c.goal=null;c.act='hang';c.until=S.t+120;return{say:"Okay! I'll stay right here.",done:'stopped and waited'}}
   // go to a place
@@ -1222,7 +1437,7 @@ async function talkTo(c,q,el){
   if(cmd&&(!SAMPLE||!cmd.done)){const a2=cmd.say;L.push({t:a2});setTimeout(()=>{bubbles=bubbles.filter(b=>b.cid!==c.id);bubbles.push({cid:c.id,txt:a2,until:performance.now()+8000});react(c,'nice')},700);renderTalk(c,el);return}
   if(!SAMPLE){const a2=quickReply(c,q);L.push({t:a2});setTimeout(()=>{bubbles=bubbles.filter(b=>b.cid!==c.id);bubbles.push({cid:c.id,txt:a2,until:performance.now()+8000});react(c,md>5?'nice':md<0?'mean':'q')},900);renderTalk(c,el);return}
   const p=c.partner&&CM.get(c.partner),hm=c.home&&BM.get(c.home),jb=c.job&&BM.get(c.job),sp=spOf(c);
-  const ctx=`You are ${c.fn}, a ${c.age}-year-old ${c.sex==='f'?'female':'male'} ${sp.one} (${sp.perk}) living on the planet ${colById(c.col).name} in the Starhaven space colony. Skill: ${skTitle(c)}${(c.sk2||[]).length?' (also learned '+c.sk2.map(k=>SKILLS[k]).join(', ')+')':''}. IQ ${Math.round(c.iq||100)}. Job: ${jb?TYPES[jb.type].name:'none'}. Home: ${hm?TYPES[hm.type].name:'none'}. Partner: ${p?p.fn+' the '+spOf(p).one:'none'}. Mood ${Math.round(c.hap)}/100, health ${Math.round(c.hp)}, hunger ${Math.round(100-c.hu)}/100. ${c.pwOn?'Superpower: '+POWERS[c.pw]+'.':''} ${c.villain?'You are secretly the saboteur. Never admit it, but be shifty.':''} Right now you are ${(ACT[c.act]||c.act).toLowerCase()} and thinking: "${c.th}". Latest colony news: ${S.headline||'nothing big'}.
+  const ctx=`You are ${c.fn}, a ${c.age}-year-old ${c.sex==='f'?'female':'male'} ${sp.one} (${sp.perk}) living on the planet ${colById(c.col).name} in the Starhaven space colony. Social skill ${Math.round(c.soc||40)}/100 (${socLbl(c.soc||40)}). ${facOf(c)?'Member of the '+facOf(c).n+' ('+facOf(c).al+' faction). ':''}${S.mayor&&S.mayor.id===c.id?'You are the '+LT()+' of all Starhaven. ':''}The colony is in the ${AGES[ageNow()].n} under a ${gov().n}. Skill: ${skTitle(c)}${(c.sk2||[]).length?' (also learned '+c.sk2.map(k=>SKILLS[k]).join(', ')+')':''}. IQ ${Math.round(c.iq||100)}. Job: ${jb?bName(jb.type):'none'}. Home: ${hm?bName(hm.type):'none'}. Partner: ${p?p.fn+' the '+spOf(p).one:'none'}. Mood ${Math.round(c.hap)}/100, health ${Math.round(c.hp)}, hunger ${Math.round(100-c.hu)}/100. ${c.pwOn?'Superpower: '+POWERS[c.pw]+'.':''} ${c.villain?'You are secretly the saboteur. Never admit it, but be shifty.':''} Right now you are ${(ACT[c.act]||c.act).toLowerCase()} and thinking: "${c.th}". Latest colony news: ${S.headline||'nothing big'}.
 A voice from the sky (a viewer of the live stream) is talking to you. ${cmd?'You just did what they asked: you '+cmd.done+'. Confirm it in character. ':'If they ask you to do something you cannot do, say so kindly and suggest something you can do (go to the park, eat, sleep, work, build something, dance, find a partner). Answer their actual question directly. '}Reply in character in 1-2 short, funny, family-friendly sentences. If they are kind, be delighted. If they are mean, be a little hurt but witty. No narration, just your words.`;
   const msgs=[{role:'user',content:ctx+'\n\nThe voice says: '+L[0].t}];for(let i=1;i<L.length;i++)msgs.push({role:L[i].me?'user':'assistant',content:L[i].t});
   const ans={t:'…'};L.push(ans);renderTalk(c,el);
@@ -1234,7 +1449,7 @@ function renderTalk(c,el){for(const t of document.querySelectorAll(`.talk[data-t
 function renderTalkInto(c,el){const box=el&&el.querySelector('.msgs');if(!box)return;const L=talkLog.get(c.id)||[];box.innerHTML=L.map(m=>`<div class="m ${m.me?'me':'them'}"></div>`).join('');[...box.children].forEach((d,i)=>d.textContent=L[i].t);box.scrollTop=box.scrollHeight}
 
 /* ---------- powers, agents, market, patrons ---------- */
-function eraOf(){return S.tech>=4?3:S.tech>=2?2:1}
+function eraOf(){const a=ageNow();return a>=4?3:a>=3?2:1}
 function dawnExtras(){
   if(S.owlsDue){S.owlsDue=false;S.owlsCame=true;const col=S.cols[0],names=[];for(let k=0;k<2;k++)for(const sx of['f','m']){const c=newCitizen(col,10,sx,22+((rand()*10)|0));findHome(c);names.push(c.fn)}
     log(`A night-shift shuttle landed on ${col.name}: ${names.join(', ')}, the first Nightowls! They work while everyone else sleeps.`,'colony',col.cx,col.cy,col.id)}
@@ -1309,7 +1524,7 @@ function newWorld(){
   log(`${SPECIES.length*2} settlers from ${SPECIES.length} species landed together on the planet Kepra.`,'colony',24,21,1);
 }
 function save(){try{S.saved=Date.now();localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
-function load(){try{const r=localStorage.getItem(KEY);if(r){const o=JSON.parse(r);if(o&&o.v===1){S=o;restoreSpecies();S.mk=S.mk||initMarket();while(S.sp.length<SPECIES.length)S.sp.push({b:0,d:0});for(const k of['px','open'])while(S.mk[k].length<SPECIES.length)S.mk[k].push(10);while(S.mk.hist.length<SPECIES.length)S.mk.hist.push([10]);if(S.wallet)while(S.wallet.sh.length<SPECIES.length)S.wallet.sh.push(0);if(S.iq)while(S.iq.length<SPECIES.length)S.iq.push(IQ0[S.iq.length]);if(S.iqH)while(S.iqH.length<SPECIES.length)S.iqH.push([IQ0[S.iqH.length]]);if(S.iqLog)while(S.iqLog.length<SPECIES.length)S.iqLog.push(IQ0[S.iqLog.length]);S.owlsDue=!S.c.some(c=>c.sp===10)&&!S.owlsCame;S.patrons=S.patrons||[];S.wallet=S.wallet||{cash:1000,sh:SPECIES.map(()=>0)};S.era=S.era||eraOf();for(const c of S.c)if(c.iq==null){c.iq=Math.round(IQ0[c.sp]+(Math.random()-.5)*14);c.edu=c.edu||0}rebuildMaps();return true}}}catch(e){}return false}
+function load(){try{const r=localStorage.getItem(KEY);if(r){const o=JSON.parse(r);if(o&&o.v===1){S=o;restoreSpecies();S.mk=S.mk||initMarket();while(S.sp.length<SPECIES.length)S.sp.push({b:0,d:0});for(const k of['px','open'])while(S.mk[k].length<SPECIES.length)S.mk[k].push(10);while(S.mk.hist.length<SPECIES.length)S.mk.hist.push([10]);if(S.wallet)while(S.wallet.sh.length<SPECIES.length)S.wallet.sh.push(0);if(S.iq)while(S.iq.length<SPECIES.length)S.iq.push(IQ0[S.iq.length]);if(S.iqH)while(S.iqH.length<SPECIES.length)S.iqH.push([IQ0[S.iqH.length]]);if(S.iqLog)while(S.iqLog.length<SPECIES.length)S.iqLog.push(IQ0[S.iqLog.length]);S.owlsDue=!S.c.some(c=>c.sp===10)&&!S.owlsCame;S.patrons=S.patrons||[];S.wallet=S.wallet||{cash:1000,sh:SPECIES.map(()=>0)};S.era=S.era||eraOf();for(const c of S.c){if(c.soc==null)c.soc=Math.round(20+Math.random()*45);if(c.al==null)c.al=+((Math.random()*2-1)*.8).toFixed(2)}if(!S.gov){let a=0;while(a<AGES.length-1&&S.research>=AGES[a+1].at*PACE)a++;S.gov=a>=3?'democracy':a>=1?'elders':'tribe'}for(const c of S.c)if(c.iq==null){c.iq=Math.round(IQ0[c.sp]+(Math.random()-.5)*14);c.edu=c.edu||0}rebuildMaps();return true}}}catch(e){}return false}
 
 /* ---------- sprites ---------- */
 const CHAR=new Map();
@@ -1376,7 +1591,7 @@ function renderSpecies(){
     const rows=al.map(c=>{const jb=c.job&&BM.get(c.job),p=c.partner&&CM.get(c.partner);
       const tags=(c.pwOn?'⚡'+POWERS[c.pw]+' ':'')+(c.agent?'◆Agent ':'')+(c.patron?'♛Patron':'');
       return`<tr data-cid="${c.id}"><td><b style="font:700 13px var(--body)">${c.fn}</b> ${c.sex==='f'?'♀':'♂'}</td><td>${c.age}</td><td>${skTitle(c)}${(c.sk2||[]).length?' +'+c.sk2.length:''}</td><td>${Math.round(c.iq||100)}</td><td>${mini(c.hp,'#ef6a5a')}</td><td>${mini(c.hap,'#62c6b2')}</td><td>${mini(c.hu,'#f2b24a')}</td>
-        <td>${jb?TYPES[jb.type].name:(c.age<18?'Student':c.age>=lifeOf(c)*.8?'Retired':'Looking')}</td><td>${c.transit?'In space':colById(c.col).name}</td><td>${p?p.fn:'–'}</td><td>${ACT[c.act]||c.act}${c.sick?' · sick':''}</td><td class="tag">${tags}</td></tr>`}).join('');
+        <td>${jb?bName(jb.type):(c.age<18?'Student':c.age>=lifeOf(c)*.8?'Retired':'Looking')}</td><td>${c.transit?'In space':colById(c.col).name}</td><td>${p?p.fn:'–'}</td><td>${ACT[c.act]||c.act}${c.sick?' · sick':''}</td><td class="tag">${tags}</td></tr>`}).join('');
     return`<details class="sp${al.length?'':' out'}" data-sp="${i}" style="--c:${sp.color}"${spOpen.has(i)?' open':''}><summary><span class="pics"><img src="${SPF[i]}" alt=""><img src="${SPURL[i]}" alt=""></span><b>${sp.many}<em>${al.length?al.length+' alive':'extinct'} · ${bornN} born · ${diedN} died${al.length?' · IQ '+iqStr(i):''}</em></b><small>${sp.from&&sp.adapt==null&&sp.from[0]!==sp.from[1]?'🧬 '+SPECIES[sp.from[0]].one+' × '+SPECIES[sp.from[1]].one+' · ':''}${sp.perk}</small></summary>
       <div class="tw">${al.length?`<table class="ct"><tr><th>Name</th><th>Age</th><th>Skill</th><th>IQ</th><th>Health</th><th>Mood</th><th>Fed</th><th>Job</th><th>Planet</th><th>Partner</th><th>Doing</th><th>Special</th></tr>${rows}</table>`:'<div class="hint">No one left.</div>'}</div></details>`}).join('');
 }
@@ -1473,11 +1688,12 @@ function shaded(b,era){
   SHADE.set(key,c);return c;
 }
 function drawB(b,px,py,era){
-  if(era===1){ctx.drawImage(sprite(b),px,py);return}
+  if(era===1){ctx.drawImage(ageNow()<2&&b.cond>=10?primSprite(b):sprite(b),px,py);return}
   if(era===2){ctx.fillStyle='#00000045';ctx.beginPath();ctx.ellipse(px+9,py+14.5,8,2.6,0,0,7);ctx.fill();ctx.drawImage(shaded(b,2),px,py);return}
   const hg=bHeight(b);
   ctx.fillStyle='#00000050';ctx.beginPath();ctx.moveTo(px+2,py+15);ctx.lineTo(px+16,py+15);ctx.lineTo(px+16+hg*.9,py+15+hg*.45);ctx.lineTo(px+2+hg*.9,py+15+hg*.45);ctx.fill();
   ctx.drawImage(shaded(b,3),px,py-hg);
+  if(ageNow()>=5){ctx.strokeStyle=ageNow()>=6?`rgba(200,120,255,${.35+.3*Math.sin(performance.now()/250+b.id)})`:`rgba(90,240,255,${.3+.25*Math.sin(performance.now()/400+b.id)})`;ctx.lineWidth=.6;ctx.strokeRect(px+1.5,py-hg+1.5,13,13+hg)}
 }
 function wrap(txt,max){const w=txt.split(' '),lines=[];let l='';for(const s of w){const tt=l?l+' '+s:s;if(ctx.measureText(tt).width>max&&l){lines.push(l);l=s}else l=tt}if(l)lines.push(l);return lines}
 function planetPos(i,cx,cy,s){const r=s*(.14+i*.045),a=i*2.1+S.t*.0004*(1+(PL.length-i)*.2);return[cx+Math.cos(a)*r,cy+Math.sin(a)*r*.62]}
@@ -1511,6 +1727,7 @@ function draw(){
   ctx.drawImage(TERR.get(col.id),0,0);
   const era=S.era||1;
   if(era>=2){const g=ctx.createRadialGradient(W*T*.45,H*T*.4,40,W*T*.5,H*T*.5,W*T*.75);g.addColorStop(0,'rgba(255,240,210,'+(era===3?.14:.08)+')');g.addColorStop(1,'rgba(0,0,20,'+(era===3?.35:.2)+')');ctx.fillStyle=g;ctx.fillRect(0,0,W*T,H*T)}
+  drawTerritory(col);
   const occ=new Map();for(const c of S.c)if(c.inB&&c.col===col.id)occ.set(c.inB,(occ.get(c.inB)||0)+1);
   const blink=Math.floor(performance.now()/400)%2;
   for(const sc2 of(col.scorch||[])){const age=(S.t-sc2.t)/1440;if(age>6)continue;ctx.fillStyle=`rgba(25,18,15,${.45*(1-age/6)})`;ctx.beginPath();ctx.ellipse(sc2.x*T+8,sc2.y*T+10,14,7,0,0,7);ctx.fill()}
@@ -1523,7 +1740,7 @@ function draw(){
       for(let i=0;i<6;i++){const a2=an+i*Math.PI/3;ctx.beginPath();ctx.moveTo(wx,wy);ctx.lineTo(wx+Math.cos(a2)*5,wy+Math.sin(a2)*5);ctx.stroke();ctx.fillStyle=['#ef6a5a','#62c6b2','#a99af2'][i%3];ctx.fillRect(wx+Math.cos(a2)*5-1,wy+Math.sin(a2)*5-1,2,2)}}
     if(b.type==='water'&&b.prog>=1&&b.cond>=10){const tt=performance.now()/300;for(let i=0;i<4;i++){const sx=px+3+((i*5+tt)%10),sy=py+8+Math.sin(tt+i)*2;ctx.fillStyle='rgba(255,255,255,.8)';ctx.fillRect(sx,sy,1,1)}}
     if(z>=1.6*dpr&&cam.mode!=='pov'){const hg=era===3?bHeight(b):0;ctx.font='6px sans-serif';ctx.fillText(ICON[b.type]||'',px+10,py-hg+4)}
-    if(z>=(b.type==='home'?4.6:2.8)*dpr&&cam.mode!=='pov'){const lb=SHORT[b.type]||'';ctx.font='bold 3.6px sans-serif';const tw=ctx.measureText(lb).width;ctx.fillStyle='rgba(7,9,20,.78)';ctx.fillRect(px+8-tw/2-1.5,py+16.2,tw+3,5);ctx.fillStyle='#ece9f4';ctx.textAlign='center';ctx.fillText(lb,px+8,py+20);ctx.textAlign='left'}
+    if(z>=(b.type==='home'?4.6:2.8)*dpr&&cam.mode!=='pov'){const lb=(ageNow()<3&&AN[b.type]?AN[b.type][ageNow()]:SHORT[b.type])||'';ctx.font='bold 3.6px sans-serif';const tw=ctx.measureText(lb).width;ctx.fillStyle='rgba(7,9,20,.78)';ctx.fillRect(px+8-tw/2-1.5,py+16.2,tw+3,5);ctx.fillStyle='#ece9f4';ctx.textAlign='center';ctx.fillText(lb,px+8,py+20);ctx.textAlign='left'}
     if(b.cond<10){const tq=performance.now();ctx.fillStyle='rgba(20,12,10,.55)';ctx.fillRect(px,py,T,T);
       ctx.fillStyle='#5a4a40';ctx.fillRect(px+1,py+11,5,4);ctx.fillRect(px+8,py+12,6,3);ctx.fillStyle='#7a6a5a';ctx.fillRect(px+4,py+10,4,3);ctx.fillRect(px+11,py+10,3,2);
       ctx.strokeStyle='rgba(0,0,0,.7)';ctx.lineWidth=.6;ctx.beginPath();ctx.moveTo(px+3,py+2);ctx.lineTo(px+6,py+6);ctx.lineTo(px+4,py+9);ctx.moveTo(px+12,py+3);ctx.lineTo(px+10,py+7);ctx.stroke();
@@ -1539,12 +1756,17 @@ function draw(){
     ctx.drawImage(img,cx-4.5*sc,top,9*sc,11*sc);
     if(c.pwOn&&((performance.now()/180+c.id)|0)%4===0){ctx.fillStyle='#fff6c8';ctx.fillRect(cx+4*sc,top,1,1)}
     if(c.emo&&c.emo.until>performance.now()){const k=1-(c.emo.until-performance.now())/4500;ctx.font='7px sans-serif';ctx.textAlign='center';ctx.globalAlpha=Math.min(1,(1-k)*4);ctx.fillText(c.emo.t,cx,top-4-Math.min(1,k*6)*4);ctx.globalAlpha=1;ctx.textAlign='left'}
+    if(c.role){ctx.fillStyle=SVC[c.role].col;ctx.fillRect(cx-2.5,top-1.2,5,1.6);ctx.fillStyle='#fff';ctx.fillRect(cx-.5,top-.9,1,1)}else if(c.vol){ctx.fillStyle='#ffd35a';ctx.fillRect(cx-2,top+4,4,.8)}
+    if(ageNow()>=6&&((performance.now()/700+c.id*3.7)|0)%11===0){ctx.strokeStyle='rgba(200,140,255,.8)';ctx.lineWidth=.6;ctx.beginPath();ctx.arc(cx,top+5,6,0,7);ctx.stroke()}
+    if(c.rally>S.t){ctx.fillStyle='#5a3a22';ctx.fillRect(cx+3,top-6,.6,8);ctx.fillStyle='#fbf8ff';ctx.fillRect(cx+1,top-9,5,3.5);ctx.fillStyle='#ef6a5a';ctx.fillRect(cx+2,top-8,3,.6);ctx.fillRect(cx+2,top-7,2,.6)}
     if(c.agent){ctx.fillStyle='#b48cf0';ctx.fillRect(cx-1,top-4,2,1);ctx.fillRect(cx-2,top-3,4,1);ctx.fillRect(cx-1,top-2,2,1)}
     else if(c.patron){ctx.fillStyle='#ffd35a';ctx.fillRect(cx-2,top-3,5,1);ctx.fillRect(cx-2,top-4,1,1);ctx.fillRect(cx,top-4,1,1);ctx.fillRect(cx+2,top-4,1,1)}}
+  drawDrones(col);
   const now=performance.now();launches=launches.filter(l=>now-l.rt<2600);
   for(const l of launches){if(l.col!==col.id)continue;const f=(now-l.rt)/2600,hgt=(l.up?f:1-f)*120;const px=l.x*T+6,py=l.y*T-hgt;
     ctx.fillStyle='#eef0f6';ctx.fillRect(px,py,4,9);ctx.fillStyle='#e8735a';ctx.fillRect(px,py-1,4,1);ctx.fillRect(px-1,py+7,1,2);ctx.fillRect(px+4,py+7,1,2);
     ctx.fillStyle=blink?'#ffd35a':'#ff8a3d';ctx.fillRect(px+1,py+9,2,3+(blink?2:0))}
+  drawSeason(col);
   const a=darkness();
   const drawFX=()=>{const nowT=performance.now();FX=FX.filter(f=>nowT-f.t0<f.dur);
     for(const f of FX){if(f.col!==col.id)continue;const p=(nowT-f.t0)/f.dur,cx=f.x*T+8,cy=f.y*T+8;
@@ -1564,6 +1786,7 @@ function draw(){
         ctx.fillStyle='#9aa4c0';ctx.beginPath();ctx.ellipse(tx,hy,18,6,0,0,7);ctx.fill();ctx.fillStyle='#bfe8ff';ctx.beginPath();ctx.ellipse(tx,hy-4,8,6,0,Math.PI,0);ctx.fill();
         for(let i=-2;i<=2;i++){ctx.fillStyle=((nowT/150|0)+i)%2?'#ffd35a':'#ef6a5a';ctx.fillRect(tx+i*7-1,hy+1,2,2)}}
       if(f.k==='firework'){const r=10+p*40,n=14;for(let i=0;i<n;i++){const an=i/n*Math.PI*2;ctx.fillStyle=`hsla(${f.h+i*8},100%,65%,${1-p})`;ctx.fillRect(cx+Math.cos(an)*r,cy-60+Math.sin(an)*r+p*p*20,3,3)}}
+      if(f.k==='paint'){for(let i=0;i<16;i++){const an=i*2.4+(f.x*7),r=(4+(i*11%26))*Math.min(1,p*2.5),yy=cy-8+Math.sin(an)*r*.6-(p<.4?(1-p/.4)*30:0);ctx.fillStyle=(i%2?f.c1:f.c2)+(p>.7?'88':'ee');ctx.beginPath();ctx.arc(cx+Math.cos(an)*r,yy,2+(i%3),0,7);ctx.fill()}}
       if(f.k==='spark'){for(let i=0;i<10;i++){const an=i*.63+nowT/300,r=6+((nowT/40+i*7)%18);ctx.fillStyle=`rgba(255,230,140,${1-p})`;ctx.fillRect(cx+Math.cos(an)*r,cy+Math.sin(an)*r-8,2,2)}}}};
   if(a>0){ctx.fillStyle=`rgba(14,10,48,${a})`;ctx.fillRect(0,0,W*T,H*T);ctx.fillStyle=`rgba(255,206,110,${Math.min(1,a*1.7)})`;
     for(const b of S.b){if(b.col!==col.id||!works(b))continue;const lit=b.type==='garden'||b.type==='o2'||b.type==='port'||b.type==='hall'||(occ.get(b.id)||0)>0;if(!lit)continue;const hg=era===3?bHeight(b):0,ky=(16+hg)/16;for(const[x,y,w,h]of(WIN[b.type]||[]))ctx.fillRect(b.x*T+x,b.y*T-hg+y*ky,w,h*ky)}}
@@ -1587,7 +1810,7 @@ function draw(){
     ctx.fillStyle='#fbf8ff';ctx.strokeStyle=spOf(c).color;ctx.lineWidth=2.5*dpr;ctx.beginPath();ctx.roundRect(bx,by,pw,ph,6*dpr);ctx.fill();ctx.stroke();
     ctx.beginPath();ctx.moveTo(sx-5*dpr,by+ph);ctx.lineTo(sx,by+ph+8*dpr);ctx.lineTo(sx+5*dpr,by+ph);ctx.fill();
     ctx.fillStyle='#1b1426';lines.forEach((l,i)=>ctx.fillText(l,bx+8*dpr,by+5*dpr+i*lh))}
-  if(cam.mode!=='pov')drawStarMap();
+  if(cam.mode!=='pov'){drawStarMap();ctx.setTransform(1,0,0,1,0,0);drawWarBanner(cv.width)}
 }
 
 /* ---------- UI ---------- */
@@ -1690,13 +1913,13 @@ $('insp').addEventListener('click',panelAct);
 const bar=(v,col)=>`<div class="track"><div class="fill" style="width:${Math.round(Math.max(0,v))}%;background:${col}"></div></div>`;
 const ACT={hang:'Hanging out outside',sleep:'Sleeping',work:'Working',eat:'Eating',play:'Relaxing',study:'At the Academy',visit:'Visiting',home:'At home',walk:'Walking',heal:'At the Med Bay',flying:'Flying between planets'};
 function scoreOf(i){const al=S.c.filter(c=>c.sp===i);return al.length*10+S.sp[i].b*3+Math.round(avgHap(al)/4)}
-function updatePanel(){
+function updatePanel(){renderPower();
   renderPlanetTabs();
   $('clock').textContent=`Day ${day()} · ${DAYS[wday()]} ${clk()}`;
   const col=colById(S.view),cp=colC(col),alive=new Set(S.c.map(c=>c.sp)).size,next=TECH[S.tech];
   const st=[[S.c.length,'citizens'],[`${alive}/${SPECIES.length}`,'species alive'],[S.cols.length,S.cols.length===1?'planet settled':'planets settled'],[Math.floor(S.credits),'credits'],[next?`${Math.floor(S.research)}/${next.at}`:'max','research'],[Math.round(avgHap())+'%','happiness'],
     [Math.floor(col.food),`food on ${col.name}`,col.food<cp.length*2],[`${Math.floor(col.o2)} ${col.o2rate>=0?'▲':'▼'}`,`oxygen on ${col.name}`,col.o2<100||col.o2rate<0],[col.broken,'broken buildings',col.broken>0],
-    [`${S.era||1} · ${ERA[S.era||1]}`,'graphics era'],[S.c.filter(c=>c.pwOn).length,'superpowers'],[S.c.filter(c=>lvOf(c)>=3).length,'skill masters'],[S.sp.reduce((s,x)=>s+x.b,0),'births'],[S.sp.reduce((s,x)=>s+x.d,0),'deaths'],[`${cp.length}/${housingCap(col)}`,'beds used']];
+    [`${AGES[ageNow()].e} ${AGES[ageNow()].n}`,'age'],[`${seasonOf(col).e} ${seasonOf(col).n}`,'season'],[`${S.era||1} · ${ERA[S.era||1]}`,'graphics era'],[gov().n,'government'],[(S.fac||[]).length,'factions'],[S.c.filter(c=>c.pwOn).length,'superpowers'],[S.c.filter(c=>lvOf(c)>=3).length,'skill masters'],[S.sp.reduce((s,x)=>s+x.b,0),'births'],[S.sp.reduce((s,x)=>s+x.d,0),'deaths'],[`${cp.length}/${housingCap(col)}`,'beds used']];
   $('stats').innerHTML=st.map(([v,l,bad])=>`<div class="stat${bad?' bad':''}"><b>${v}</b><span>${l}</span></div>`).join('');
   const order=SPECIES.map((s,i)=>i).sort((a,b)=>scoreOf(b)-scoreOf(a));
   $('lb').innerHTML='<tr><th>Species</th><th>Alive</th><th>Born</th><th>Died</th><th>Mood</th></tr>'+order.map((i,r)=>{const al=S.c.filter(c=>c.sp===i);
@@ -1710,18 +1933,19 @@ function updatePanel(){
   if(sel&&sel.k==='c'&&CM.has(sel.id)){const c=CM.get(sel.id),hm=c.home&&BM.get(c.home),jb=c.job&&BM.get(c.job),p=c.partner&&CM.get(c.partner),sp=spOf(c);
     h=`<div class="who"><img src="${charSprite(c.sp,c.sex).toDataURL()}" alt="">${c.fn} the ${sp.one}</div>
     <div class="meta">${c.sex==='f'?'Female':'Male'} · age ${c.age} of ~${Math.round(lifeOf(c))} · IQ ${Math.round(c.iq||100)} · ${colById(c.col).name} · ${ACT[c.act]||c.act}${c.sick?' · <span style="color:var(--warn)">sick</span>':''}</div>
+    <div class="meta">💬 Social ${Math.round(c.soc||40)} · ${socLbl(c.soc||40)}${facOf(c)?` · ${AL[facOf(c).al].e} ${facOf(c).n}${facOf(c).leader===c.id?' (leader)':''}`:''}${S.mayor&&S.mayor.id===c.id?` · 👑 ${LT()} of Starhaven`:''}${c.activist?` · 📢 activist`:''}${c.role?` · ${SVC[c.role].e} ${svcN(c.role)}`:''}${c.vol?' · 🙋 volunteer':''}${c.jail>=day()?' · 🔒 in jail':''}</div>
     <div class="meta">🛠 <b>${skTitle(c)}</b> ${lvOf(c)<4?`<span class="hint">· ${Math.round((c.xp||0)-LVX[lvOf(c)])}/${LVX[lvOf(c)+1]-LVX[lvOf(c)]} xp to ${LVN[lvOf(c)+1]}</span>`:''}${(c.sk2||[]).length?` · also knows ${c.sk2.map(k=>SKILLS[k]).join(', ')}`:''}${c.lx&&Object.keys(c.lx).length?` · learning ${Object.entries(c.lx).sort((a,b)=>b[1]-a[1]).slice(0,1).map(([k,v])=>SKILLS[k]+' '+Math.round(v/60*100)+'%')}`:''}</div>
     ${c.pwOn?`<div class="meta" style="color:var(--star)">⚡ Superpower: ${POWERS[c.pw]} (${PDESC[c.pw]})</div>`:''}
     ${c.agent?`<div class="meta" style="color:var(--violet)">◆ AI agent · goal: ${c.agent.goal?GOAL[c.agent.goal]:'choosing next goal'} · plans completed: ${c.agent.wins}</div>`:''}
     ${c.patron?`<div class="meta" style="color:var(--star)">♛ Patron citizen</div>`:''}
     <div class="thought">“${c.th}”</div>
     <div class="meter"><span>Health</span>${bar(c.hp,'#ef6a5a')}</div><div class="meter"><span>Energy</span>${bar(c.en,'#62c6b2')}</div><div class="meter"><span>Fed</span>${bar(c.hu,'#f2b24a')}</div><div class="meter"><span>Fun</span>${bar(c.fun,'#a99af2')}</div>
-    <div class="meta" style="margin-top:8px">Partner: ${p?p.fn:'none'} · Home: ${hm?TYPES[hm.type].name:'none'} · Job: ${jb?TYPES[jb.type].name:(c.age<18?'student':c.age>=lifeOf(c)*.8?'retired':'looking')} · ${Math.floor(c.coins)} coins</div>
+    <div class="meta" style="margin-top:8px">Partner: ${p?p.fn:'none'} · Home: ${hm?bName(hm.type):'none'} · Job: ${jb?bName(jb.type):(c.age<18?'student':c.age>=lifeOf(c)*.8?'retired':'looking')} · ${Math.floor(c.coins)} coins</div>
     <div class="meta">${sp.perk}</div>
     <div class="talk" data-talk="${c.id}"><div class="msgs"></div><form data-talkform="${c.id}"><input placeholder="Talk to ${c.fn}, or tell them what to do…" maxlength="160" aria-label="Message to ${c.fn}"><button class="solo" type="submit">Talk</button></form><div class="hint">Try: "go to the park" · "build a water park" · "go eat" · "dance" · "date a Bolt" · "start a family" · "use your power"</div></div>
     <div class="bar" style="margin-top:6px"><button class="solo" data-act="walk">Walk with them</button><button class="solo" data-act="fp">First person 3D</button><button class="solo" data-act="follow">${cam.mode==='follow'&&cam.fcid===c.id?'Following':'Follow'}</button></div>`}
   else if(sel&&sel.k==='b'&&BM.has(sel.id)){const b=BM.get(sel.id),names=ids=>ids.map(i=>CM.get(i)).filter(Boolean).map(c=>`${c.fn} (${spOf(c).one}${TYPES[b.type].skill===c.skill?', '+SKILLS[c.skill]:''})`).join(', ')||'nobody';
-    h=`<div class="who">${TYPES[b.type].name}</div><div class="meta">${colById(b.col).name} · ${b.prog<1?`under construction, ${Math.round(b.prog*100)}%`:b.cond<10?'<span style="color:var(--warn)">broken, needs a fixer</span>':`condition ${Math.round(b.cond)}%`}</div>
+    h=`<div class="who">${bName(b.type)}</div><div class="meta">${colById(b.col).name} · ${b.prog<1?`under construction, ${Math.round(b.prog*100)}%`:b.cond<10?'<span style="color:var(--warn)">broken, needs a fixer</span>':`condition ${Math.round(b.cond)}%`}</div>
     ${isHousing(b)?`<div class="meta">Residents (${b.res.length}/${capOf(b)}): ${names(b.res)}</div>`:''}
     ${TYPES[b.type].jobs?`<div class="meta">Workers (${b.wrk.length}/${TYPES[b.type].jobs}): ${names(b.wrk)}</div><div class="meta">Best staffed by a ${SKILLS[TYPES[b.type].skill].toLowerCase()}.</div>`:''}`}
   if(!$('insp').contains(document.activeElement)&&!$('insp').matches(':hover')){$('insp').innerHTML=h;restoreTalk($('insp'))}
@@ -1760,7 +1984,7 @@ function colorLine(){
     ()=>{const l=leaderSp();return`The ${SPECIES[l].many} lead the species race with ${S.c.filter(c=>c.sp===l).length} alive.`},
     ()=>`Oxygen on ${col.name} is ${col.o2rate>=0?'holding steady':'dropping'} at ${Math.floor(col.o2)} units.`,
     ()=>{const w=cp.filter(c=>c.age>=4);if(!w.length)return null;const c=R2(w);return`${c.fn} the ${spOf(c).one} is thinking: "${c.th}"`},
-    ()=>S.tech<TECH.length?`Scientists are ${Math.min(99,Math.round(S.research/TECH[S.tech].at*100))}% of the way to the next breakthrough.`:'Every known technology has been discovered.',
+    ()=>S.tech<TECH.length?`Scientists are ${Math.min(99,Math.round(S.research/(TECH[S.tech].at*PACE)*100))}% of the way to the next breakthrough.`:'Every known technology has been discovered.',
     ()=>S.donateUrl?`Want to trade species stocks? Support the colony at ${S.donateUrl} and get trading coins.`:null,
     ()=>{const f=(S.fans||[]).slice().sort((a,b)=>fanVal(b)/b.start-fanVal(a)/a.start)[0];if(!f)return null;const g=(fanVal(f)-f.start)/f.start*100;return`Top supporter trader: ${f.name}, ${g>=0?'up':'down'} ${Math.abs(g).toFixed(1)}%.`},
     ()=>{const w=cp.filter(c=>c.age>=4);if(!w.length)return null;const c=R2(w);return`Quote of the hour, from ${c.fn} the ${spOf(c).one}: "${pick(TH.funny)}"`},
@@ -1889,7 +2113,7 @@ function buildReport(){
   const iq=Math.round(S.c.reduce((a,c)=>a+(c.iq||100),0)/Math.max(1,S.c.length)),hq=h.filter(x=>x.d>=last.day),iq0=hq.length?hq[0].iq:iq;
   const qs=(S.quotes||[]).filter(x=>x.d>=last.day);
   return{day:day(),hist:h.length>1?h:[{pop:22},{pop:S.c.length}],pop:S.c.length,gain:S.c.length-last.pop,cols:S.cols.length,rank,extinct,evo,era:S.era||1,
-    techPct:S.tech<TECH.length?Math.min(1,S.research/TECH[S.tech].at):1,techNext:S.tech<TECH.length?`Next breakthrough: ${Math.round(Math.min(1,S.research/TECH[S.tech].at)*100)}% done`:'Every technology discovered',
+    techPct:S.tech<TECH.length?Math.min(1,S.research/(TECH[S.tech].at*PACE)):1,techNext:S.tech<TECH.length?`Next breakthrough: ${Math.round(Math.min(1,S.research/(TECH[S.tech].at*PACE))*100)}% done`:'Every technology discovered',
     iq,iqD:iq-iq0,smart:sm?`${sm.fn} the ${spOf(sm).one} (IQ ${Math.round(sm.iq)})`:'nobody',births:S.sp.reduce((a,x)=>a+x.b,0),deaths:S.sp.reduce((a,x)=>a+x.d,0),
     killer:dc?dc[0]:'nothing yet',mayor:may?`${may.fn} the ${spOf(may).one}`:'none yet',powers:S.c.filter(c=>c.pwOn).length,oldest:old?`${old.fn}, age ${old.age}`:'–',quote:qs.length?pick(qs):(S.quotes||[]).slice(-1)[0]};
 }
@@ -2216,7 +2440,7 @@ $('act3').addEventListener('click',e=>{const b=e.target.closest('button[data-a]'
     if(!o||Math.hypot(o.x-c.x,o.y-c.y)>4){toast('Nobody close enough to talk to. Walk up to someone.');return}
     const save=[o.act,o.until];c.act=o.act='hang';c.lastChat=o.lastChat=0;tryChat(c);c.act='walk';[o.act,o.until]=save;toast(`You chatted with ${o.fn} the ${spOf(o).one}.`)}
   if(a==='build'){const m=$('bmenu');if(!m.hidden){m.hidden=true;return}
-    m.innerHTML=BUILDABLE.map(t=>{const lock=(t==='apt'&&S.tech<1)||(t==='port'&&S.tech<2)||(t==='sky'&&S.tech<3)||((t==='amuse'||t==='water'||t==='mall')&&S.tech<2);return`<button data-t="${t}" ${lock||S.credits<TYPES[t].cost?'disabled':''}>${TYPES[t].name}<small>${lock?'Not invented yet':TYPES[t].cost+' credits'}</small></button>`}).join('');m.hidden=false}
+    m.innerHTML=BUILDABLE.map(t=>{const lock=(t==='apt'&&S.tech<1)||(t==='port'&&S.tech<2)||(t==='sky'&&S.tech<3)||((t==='amuse'||t==='water'||t==='mall')&&S.tech<2);return`<button data-t="${t}" ${lock||S.credits<TYPES[t].cost?'disabled':''}>${bName(t)}<small>${lock?'Not invented yet':TYPES[t].cost+' credits'}</small></button>`}).join('');m.hidden=false}
   if(a==='family'){const p=c.partner&&CM.get(c.partner);
     if(p){if(p.col!==c.col||p.transit||Math.hypot(p.x-c.x,p.y-c.y)>6&&!(p.inB&&p.inB===c.home)){toast(`Go find ${p.fn} first.`);return}
       const mom=c.sex==='f'?c:p,h=c.home&&BM.get(c.home);if(!h||h.prog<1){toast('You need a home first.');return}if(h.res.length>=capOf(h)){toast('Your home is full. Build a bigger one!');return}
@@ -2236,14 +2460,14 @@ $('act3').addEventListener('click',e=>{const b=e.target.closest('button[data-a]'
     else if(S.t<cd){toast(`Your power is recharging. Ready in ${Math.ceil((cd-S.t)/60)} game hours.`);return}
     else if(c.pw==='heal'){const n=S.c.filter(x=>x.col===c.col&&x.sick&&Math.hypot(x.x-c.x,x.y-c.y)<6);for(const x of n){x.sick=0;x.hp=100}c.pwCd=S.t+360;toast(n.length?`You healed ${n.length} sick citizen${n.length>1?'s':''}!`:'Nobody nearby is sick.');if(n.length)log(`${nameOf(c)} used Healing touch on ${n.length} citizens.`,'power',c.x,c.y,col.id)}
     else if(c.pw==='mind'){S.research+=40;c.pwCd=S.t+720;toast('Breakthrough! +40 research.');log(`${nameOf(c)} had a genius breakthrough. Research jumped ahead.`,'power',c.x,c.y,col.id)}
-    else if(c.pw==='build'){const b=S.b.filter(b=>b.col===c.col&&b.prog<1).sort((a,b)=>Math.hypot(a.x-c.x,a.y-c.y)-Math.hypot(b.x-c.x,b.y-c.y))[0];if(!b){toast('Nothing is under construction.');return}b.prog=1;b.cond=100;b.prevCap=0;c.pwCd=S.t+360;toast(`You lifted the ${TYPES[b.type].name} into place with your mind!`);log(`${nameOf(c)} used Telekinesis to finish a ${TYPES[b.type].name} instantly.`,'power',b.x,b.y,col.id)}
+    else if(c.pw==='build'){const b=S.b.filter(b=>b.col===c.col&&b.prog<1).sort((a,b)=>Math.hypot(a.x-c.x,a.y-c.y)-Math.hypot(b.x-c.x,b.y-c.y))[0];if(!b){toast('Nothing is under construction.');return}b.prog=1;b.cond=100;b.prevCap=0;c.pwCd=S.t+360;toast(`You lifted the ${bName(b.type)} into place with your mind!`);log(`${nameOf(c)} used Telekinesis to finish a ${bName(b.type)} instantly.`,'power',b.x,b.y,col.id)}
     else if(c.pw==='breath'){col.o2+=200;c.pwCd=S.t+720;toast('You filled the air with oxygen. +200 O2.');log(`${nameOf(c)} used Air-maker to refill the oxygen on ${col.name}.`,'power',c.x,c.y,col.id)}
     renderAct3()}
 });
 $('bmenu').addEventListener('click',e=>{const b=e.target.closest('button[data-t]');if(!b||b.disabled)return;const c=CM.get(G.ctlId);if(!c)return;const col=colById(c.col),t=b.dataset.t;
   if(S.credits<TYPES[t].cost){toast('Not enough credits.');return}const sp=frontTile(c,col);if(!sp){toast('No open ground in front of you. Turn around or move.');return}
   S.credits-=TYPES[t].cost;const nb=addBuilding(t,sp[0],sp[1],col,false);extendRoads(col);$('bmenu').hidden=true;
-  log(`${c.fn} the ${spOf(c).one} (your choice) started building a ${TYPES[t].name} on ${col.name}.`,'build',nb.x,nb.y,col.id);toast(`Construction started: ${TYPES[t].name}.`)});
+  log(`${c.fn} the ${spOf(c).one} (your choice) started building a ${bName(t)} on ${col.name}.`,'build',nb.x,nb.y,col.id);toast(`Construction started: ${bName(t)}.`)});
 
 $('soundBtn').onclick=()=>{initAudio();if(!AC){$('soundBtn').textContent='Sound not supported';return}AC.resume();musicOn=!musicOn;MG.gain.setTargetAtTime(musicOn?.5:0,AC.currentTime,.1);$('soundBtn').setAttribute('aria-pressed',musicOn);if(musicOn)sfx('chime')};
 $('soundBtn').setAttribute('aria-pressed','false');
@@ -2257,7 +2481,7 @@ function spotlight(name,by){const n=name.trim().toLowerCase();const c=S.c.find(x
   const p=c.partner&&CM.get(c.partner),jb=c.job&&BM.get(c.job),kids=S.c.filter(k=>k.age<18&&k.home&&k.home===c.home&&k!==c).length;
   $('spot').innerHTML=`<small>CITIZEN SPOTLIGHT${by?' · asked by '+by:''}</small><div class="sh"><img src="${charSprite(c.sp,c.sex).toDataURL()}" alt=""><div><b></b><span class="sub2"></span></div></div><div class="det"></div><div class="q"></div>`;
   $('spot').querySelector('b').textContent=`${c.fn} the ${spOf(c).one}`;$('spot').querySelector('.sub2').textContent=`${c.sex==='f'?'Female':'Male'} · age ${c.age} · IQ ${Math.round(c.iq||100)}`;
-  $('spot').querySelector('.det').textContent=`${SKILLS[c.skill]}${jb?' at the '+TYPES[jb.type].name:''} on ${c.transit?'a spaceship':colById(c.col).name}. ${p?'Partner: '+p.fn+'.':'Single.'} ${kids?kids+' kid'+(kids>1?'s':'')+' at home.':''} ${c.pwOn?'Superpower: '+POWERS[c.pw]+'.':''} ${c.agent?'AI agent with '+c.agent.wins+' plans completed.':''} Mood ${Math.round(c.hap)}%.`;
+  $('spot').querySelector('.det').textContent=`${SKILLS[c.skill]}${jb?' at the '+bName(jb.type):''} on ${c.transit?'a spaceship':colById(c.col).name}. ${p?'Partner: '+p.fn+'.':'Single.'} ${kids?kids+' kid'+(kids>1?'s':'')+' at home.':''} ${c.pwOn?'Superpower: '+POWERS[c.pw]+'.':''} ${c.agent?'AI agent with '+c.agent.wins+' plans completed.':''} Mood ${Math.round(c.hap)}%.`;
   $('spot').querySelector('.q').textContent=`"${c.th}"`;$('spot').hidden=false;spotT=performance.now()+15000;
   if(!c.transit&&c.col!==S.view)setView(c.col,true);if(!c.transit&&cam.mode!=='pov'){setCam('follow');cam.fcid=c.id}
   log(`Spotlight${by?' for '+by:''}: ${nameOf(c)}, age ${c.age}. "${c.th}"`,'chat',c.x,c.y,c.col);return`Showing ${c.fn} on stream for 15 seconds.`}
@@ -2266,7 +2490,7 @@ $('urlForm').addEventListener('submit',e=>{e.preventDefault();S.liveUrl=$('liveI
 setInterval(()=>{if(spotT&&performance.now()>spotT){$('spot').hidden=true;spotT=0}},500);
 setTimeout(()=>{try{$('liveIn').value=S.liveUrl||'';$('siteIn').value=S.siteUrl||''}catch(e){}},500);
 
-(function(){const el=$('bguideList');if(!el)return;el.innerHTML=Object.keys(ICON).map(k=>`<div style="display:flex;gap:8px;align-items:flex-start;font-size:13px"><span style="font-size:20px">${ICON[k]}</span><div><b>${(TYPES[k]&&TYPES[k].name)||SHORT[k]}</b><div class="hint">${BDESC[k]||''}</div></div></div>`).join('')})();
+(function(){const el=$('bguideList');if(!el)return;el.innerHTML=Object.keys(ICON).map(k=>`<div style="display:flex;gap:8px;align-items:flex-start;font-size:13px"><span style="font-size:20px">${ICON[k]}</span><div><b>${(TYPES[k]&&bName(k))||SHORT[k]}</b><div class="hint">${BDESC[k]||''}</div></div></div>`).join('')})();
 
 const DEF_PRICES='💬 Talk to a character | FREE in chat\n🎉 Throw a party | $3\n👶 Name a baby | $2\n☄️ Send a meteor | $5\n🛸 Alien abduction | $5\n⚡ Give a superpower | $10\n💞 Matchmaker: NEW species | $10';
 function renderMenu(){const txt=(S.prices||DEF_PRICES).split('\n').map(l=>l.split('|').map(x=>x.trim())).filter(x=>x[0]);
