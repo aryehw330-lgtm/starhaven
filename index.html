@@ -1632,7 +1632,7 @@ $('clipBtn').setAttribute('aria-pressed',clipOn);
 $('clipBtn').onclick=()=>{if(!window.MediaRecorder){$('clipNote').textContent='This browser cannot record video. Use Chrome on a computer.';return}clipOn=!clipOn;$('clipBtn').setAttribute('aria-pressed',clipOn)};
 function queueClip(ev){if(!clipOn)return;if(!pendingClip||(PRI[ev.kind]||0)>(PRI[pendingClip.kind]||0))pendingClip=ev}
 const LIVE=()=>S.liveUrl||'https://www.youtube.com/channel/UCGGaz2lb-7h7Mz9oEUIOLVQ/live';
-const LINKS=()=>`\n\n🔴 Watch the colony LIVE 24/7: ${LIVE()}`+(S.siteUrl?`\n🪐 Explore it yourself and tap any character: ${S.siteUrl}`:'')+(S.donateUrl?`\n💛 Support the colony: ${S.donateUrl}`:'');
+const LINKS=()=>`\n\n🔴 Watch the colony LIVE 24/7: ${LIVE()}`+`\n🪐 Explore it yourself and talk to any character: ${S.siteUrl||'https://aryehw330-lgtm.github.io/starhaven/'}`+(S.donateUrl?`\n💛 Support the colony: ${S.donateUrl}`:'');
 function clipText(ev){const t=ev.txt.replace(/\.$/,'');return{title:(`Day ${day()}: ${t}`).slice(0,95),caption:`${ev.txt}\n\n${SPECIES.length} cartoon species. Planets to conquer. No one controls them. Follow to see who survives.${LINKS()}\n\n#aisimulation #space #pixelart #shorts`}}
 /* ---------- intro & episode studio ---------- */
 let studioBusy=false;
@@ -1677,7 +1677,7 @@ function introFrame(t){
     if(t>34.5)for(let i=0;i<14;i++){const an=i/14*Math.PI*2,r=40+(t-34.5)*120;cg.fillStyle=`hsla(${i*25},100%,65%,${Math.max(0,1-(t-34.5)/2.5)*f2})`;cg.fillRect(360+Math.cos(an)*r,960+Math.sin(an)*r,10,10)}
     bigText('Type in the live chat. They answer back.',1120,34,'#ece9f4',fade(t,33,38))}
   else{t-=6;bgStars(t);bigText('Which species will survive?',420,62,'#ffd35a',fade(t,38,46));bigText('🔴 Join the LIVE colony',600,46,'#ef6a5a',fade(t,38.5,46));bigText('Link in the description',670,34,'#ece9f4',fade(t,38.5,46));
-    if(S.siteUrl)bigText(S.siteUrl.replace(/^https?:\/\//,''),760,28,'#62c6b2',fade(t,39,46));bigText('Pick your team in the comments 👇',880,34,'#ece9f4',fade(t,39.5,46));bigText('Follow for daily episodes',950,34,'#62c6b2',fade(t,40,46))}
+    bigText((S.siteUrl||'aryehw330-lgtm.github.io/starhaven').replace(/^https?:\/\//,''),760,28,'#62c6b2',fade(t,39,46));bigText('Pick your team in the comments 👇',880,34,'#ece9f4',fade(t,39.5,46));bigText('Follow for daily episodes',950,34,'#62c6b2',fade(t,40,46))}
 }
 $('introBtn').onclick=()=>{if(studioBusy||rec)return;studioRecorder(52,{title:'Starhaven: an AI civilization you can TALK to, live (Episode 0)',caption:`${BASE_N} cartoon species. One planet. No one controls them. They work, fall in love, fight, evolve, get superpowers and fly to new planets. As they get smarter, their whole world upgrades from pixel art to 3D. And you can talk to them live: type in the stream chat and they answer back. Which species will survive?\n\nPick your team in the comments and follow for daily episodes.${LINKS()}\n\n#aisimulation #space #pixelart #shorts`,day:day(),kind:'intro'},introFrame,()=>{$('studioMsg').textContent='Intro video is ready in the list below.'})};
 function reportFrame(t,R){
