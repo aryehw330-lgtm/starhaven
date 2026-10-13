@@ -682,7 +682,9 @@ function dawn(){
     const singles=pop.filter(c=>!c.partner&&c.age>=18&&c.age<lifeOf(c)*.7);
     for(const a of singles){if(a.partner||a.sex!=='f')continue;const b=singles.find(x=>!x.partner&&x.sex==='m'&&x.sp===a.sp);
       if(b&&rand()<.6){a.partner=b.id;b.partner=a.id;findHome(b);if(b.home!==a.home)findHome(a);
-        log(`${a.fn} and ${b.fn} (${spOf(a).many}) became partners on ${col.name}.`,'life',a.x,a.y,col.id)}}
+        log(`${a.fn} and ${b.fn} (${spOf(a).many}) became partners on ${col.name}.`,'life',a.x,a.y,col.id)}
+      else if(!b&&rand()<.12){const o=singles.find(x=>!x.partner&&x.sex==='m'&&x.sp!==a.sp);if(o){a.partner=o.id;o.partner=a.id;findHome(o);if(o.home!==a.home)findHome(a);
+        log(`Love across species! ${nameOf(a)} and ${nameOf(o)} became partners on ${col.name}. Their kids will be a brand-new species.`,'life',a.x,a.y,col.id)}}}
     // births
     const hap=avgHap(pop);
     if(hap>45&&col.food>5)for(const m of pop){
@@ -692,9 +694,11 @@ function dawn(){
       const h=BM.get(m.home);if(h.res.length>=capOf(h)){note(m,'housing');continue}
       let ksp=m.sp,newKind=null;
       if(p.sp!==m.sp){const was=SPECIES.length;ksp=hybridOf(m.sp,p.sp);if(SPECIES.length>was)newKind='hybrid'}
-      if(col.p&&day()-col.day>=12&&SPECIES[ksp].adapt!==col.p&&rand()<.15){const was=SPECIES.length;ksp=adaptOf(ksp,col.p);if(SPECIES.length>was)newKind='adapt'}
+      if(rand()<(window.__MUT||.01)){ksp=mutantOf(ksp);newKind='mutant'}
+      else if(col.p&&day()-col.day>=12&&SPECIES[ksp].adapt!==col.p&&rand()<.15){const was=SPECIES.length;ksp=adaptOf(ksp,col.p);if(SPECIES.length>was)newKind='adapt'}
       const k=newCitizen(col,ksp,rand()<.5?'f':'m',0);k.iq=Math.round(((m.iq||IQ0[m.sp])+(p.iq||IQ0[p.sp]))/2+(rand()-.5)*10);
       if(newKind==='hybrid')log(`A NEW SPECIES! ${m.fn} the ${spOf(m).one} and ${p.fn} the ${spOf(p).one} had a baby, ${k.fn}, the very first ${SPECIES[ksp].one}.`,'species',h.x,h.y,col.id);
+      if(newKind==='mutant')log(`MUTATION! A 1-in-100 baby was born on ${col.name}: ${k.fn}, the very first ${SPECIES[ksp].one}! Nobody has ever seen anything like it.`,'species',h.x,h.y,col.id);
       if(newKind==='adapt')log(`EVOLUTION! Baby ${k.fn}, born on ${col.name}, is the first ${SPECIES[ksp].one}: a new species adapted to ${pc(col).name.toLowerCase()}.`,'species',h.x,h.y,col.id);
       if(ksp!==m.sp&&!newKind)S.sp[ksp].b++;k.x=h.x;k.y=h.y;k.inB=h.id;h.res.push(k.id);k.home=h.id;S.sp[m.sp].b++;
       if(rand()<.05)k.pw=pick(PK);
@@ -952,6 +956,19 @@ const EVENTS={
   feud(){const sp=[...new Set(S.c.map(c=>c.sp))];if(sp.length<2||S.feud)return;const a=pick(sp);let b=pick(sp);if(a===b)return;S.feud={a,b,until:day()+2};
     log(`FEUD! The ${SPECIES[a].many} and the ${SPECIES[b].many} are fighting over who gets the best pods. Insults are flying.`,'disaster',24,21,S.view);sfx('alarm')},
   boom(col){S.boom={col:col.id,until:day()+1};log(`Baby boom on ${col.name}! Something in the water? Everyone wants a family right now.`,'party',col.cx,col.cy,col.id);sfx('chime')},
+  match(col,by){
+    const singles=S.c.filter(c=>c.col===col.id&&!c.partner&&!c.transit&&c.age>=18&&c.age<lifeOf(c)*.55);
+    let best=null;for(const f of singles.filter(c=>c.sex==='f'))for(const m of singles.filter(c=>c.sex==='m'&&c.sp!==f.sp)){const k=Math.min(f.sp,m.sp)+'-'+Math.max(f.sp,m.sp),fresh=!(S.hyb&&S.hyb[k]!=null);const sc=(fresh?10:0)+Math.random();if(!best||sc>best[2])best=[f,m,sc]}
+    if(!best){const alive=[...new Set(S.c.map(c=>c.sp))];const a=pick(alive);let b2=pick(alive.filter(x=>x!==a));if(b2==null)b2=(a+1)%BASE_N;
+      const f2=newCitizen(col,a,'f',22+((rand()*8)|0)),m2=newCitizen(col,b2,'m',22+((rand()*8)|0));findHome(f2);findHome(m2);best=[f2,m2,0];
+      log(`A LOVE SHUTTLE landed on ${col.name} carrying two lonely hearts: ${nameOf(f2)} and ${nameOf(m2)}.`,'ship',col.cx,col.cy,col.id)}
+    const[f,m]=best;f.partner=m.id;m.partner=f.id;findHome(m);if(m.home!==f.home)findHome(f);
+    let h=f.home&&BM.get(f.home);if(!h||h.res.length>=capOf(h)){h=S.b.find(b=>b.col===col.id&&isHousing(b)&&b.prog>=1&&b.res.length+1<capOf(b))||h;if(h&&h.res.length<capOf(h)&&f.home!==h.id){leaveHome(f);leaveHome(m);h.res.push(f.id,m.id);f.home=m.home=h.id}}let kid=null;
+    {const was=SPECIES.length,ksp=hybridOf(f.sp,m.sp);kid=newCitizen(col,ksp,rand()<.5?'f':'m',0);S.sp[ksp].b++;if(h&&h.res.length<capOf(h)){kid.x=h.x;kid.y=h.y;kid.inB=h.id;h.res.push(kid.id);kid.home=h.id}else findHome(kid);
+      if(SPECIES.length>was)log(`A NEW SPECIES! ${f.fn} the ${spOf(f).one} and ${m.fn} the ${spOf(m).one} had a baby, ${kid.fn}, the very first ${SPECIES[ksp].one}.`,'species',h.x,h.y,col.id)}
+    for(let k=0;k<6;k++)setTimeout(()=>fx({k:'firework',col:col.id,x:f.x+(Math.random()-.5)*6,y:f.y-1,dur:1600,h:330+Math.random()*30}),k*250);
+    f.emo={t:'💞',until:performance.now()+6000};m.emo={t:'💞',until:performance.now()+6000};
+    log(`💞 ${by||'A viewer'} played MATCHMAKER! ${nameOf(f)} and ${nameOf(m)} fell in love${kid?` and welcomed baby ${kid.fn} the ${spOf(kid).one}`:'. A hybrid baby could be on the way'}!`,'party',f.x,f.y,col.id);sfx('fanfare')},
   election(){const cands=S.c.filter(c=>!c.transit&&c.age>=25&&!c.villain).sort((a,b)=>(b.agent?20:0)+b.hap-((a.agent?20:0)+a.hap)).slice(0,2);if(cands.length<2)return;
     const pol=['farms','fun','science','expand'],PN={farms:'more food',fun:'more fun',science:'more science',expand:'reach new planets'};const[a,b]=cands;a.pol=a.pol||pick(pol);b.pol=b.pol||pick(pol.filter(x=>x!==a.pol));
     let va=0,vb=0;for(const v of S.c){if(v.age<18||v.transit)continue;const sa=(v.sp===a.sp?2:0)+(v.fr&&v.fr[a.id]||0)+rand()*2,sb=(v.sp===b.sp?2:0)+(v.fr&&v.fr[b.id]||0)+rand()*2;if(sa>=sb)va++;else vb++}
@@ -959,7 +976,7 @@ const EVENTS={
     bubbles.push({cid:a.id,txt:`Vote for me! I promise ${PN[a.pol]}!`,until:performance.now()+5000},{cid:b.id,txt:`No, vote for ME! ${PN[b.pol]}!`,from:performance.now()+1500,until:performance.now()+6500});
     log(`ELECTION RESULTS: ${nameOf(w)} beat ${nameOf(w===a?b:a)}, ${Math.max(va,vb)} votes to ${Math.min(va,vb)}. New Mayor's promise: ${PN[w.pol]}.`,'election',w.x,w.y,w.col);sfx('fanfare')},
 };
-const EV_UI=[['meteor','☄️ Meteor'],['ufo','🛸 Alien abduction'],['party','🎉 Party'],['power','⚡ Superpower'],['crystal','💎 Crystal find'],['plague','🦠 Plague'],['boom','👶 Baby boom'],['election','🗳️ Election']];
+const EV_UI=[['match','💞 Matchmaker (new species)'],['meteor','☄️ Meteor'],['ufo','🛸 Alien abduction'],['party','🎉 Party'],['power','⚡ Superpower'],['crystal','💎 Crystal find'],['plague','🦠 Plague'],['boom','👶 Baby boom'],['election','🗳️ Election']];
 function dramaRoll(){
   const r=rand(),col=dramaCol();
   if(day()-(S.lastElection||0)>=6&&S.c.length>=10){S.lastElection=day();EVENTS.election();return}
@@ -1110,12 +1127,21 @@ function runCommand(c,q){
     return{say:pick(['Watch these moves! 💃','Party time! Everybody dance!','I was BORN for this.']),done:'started dancing'}}
   if(W(/\b(fix|repair)\b/)){const bs=S.b.filter(b=>b.col===c.col&&b.prog>=1&&b.cond<70).sort((a,b)=>a.cond-b.cond);if(!bs.length)return{say:'Everything here is in great shape already!'};
     const b=bs[0];b.cond=Math.min(100,b.cond+(c.skill==='fixer'?70:40));goTo(c,{b:b.id,act:'visit',dur:40});return{say:`Grabbing my tools! Heading to fix the ${TYPES[b.type].name}.`,done:`went to repair the ${TYPES[b.type].name}`}}
+  {const spHit=SPECIES.findIndex(x=>new RegExp('\\b('+x.one.toLowerCase()+'|'+x.many.toLowerCase()+')\\b').test(ql));
+   if(spHit>=0&&W(/\b(date|marry|partner|love|mate|match|find)\b/)){if(c.age<18)return{say:"I'm too young for that!"};
+    if(c.partner){const op=CM.get(c.partner);if(op&&op.sp===spHit)return{say:`I'm already with ${op.fn} the ${SPECIES[spHit].one}!`};}
+    const o=S.c.filter(x=>x!==c&&x.sp===spHit&&!x.partner&&x.age>=18&&x.sex!==c.sex&&!x.transit).sort((a,b)=>(b.col===c.col)-(a.col===c.col))[0];
+    if(!o)return{say:`There are no single ${SPECIES[spHit].many} right now. Maybe soon!`};
+    if(c.partner){const op=CM.get(c.partner);if(op)op.partner=0}c.partner=o.id;o.partner=c.id;
+    if(o.col!==c.col){if(portOf(colById(c.col))&&portOf(colById(o.col))){launchShip(colById(c.col),colById(o.col),[c],'shuttle')}else{o.col=c.col;o.x=c.x;o.y=c.y;o.inB=0}}findHome(o);if(o.home!==c.home)findHome(c);
+    const cross=o.sp!==c.sp;log(`${cross?'Love across species! ':''}${nameOf(c)} and ${nameOf(o)} are now partners${cross?'. Their kids could become a NEW SPECIES':''}!`,'life',c.x,c.y,c.col);
+    return{say:cross?`${o.fn} the ${SPECIES[spHit].one} said yes! Our kids are going to look SO weird. 💕`:`${o.fn} said yes! 💕`,done:`became partners with ${o.fn} the ${SPECIES[spHit].one}`}}}
   if(W(/\b(find a partner|get married|marry|find love|date someone|girlfriend|boyfriend)\b/)){if(c.partner)return{say:`I already have ${CM.get(c.partner)?CM.get(c.partner).fn:'someone'}!`};if(c.age<18)return{say:"I'm too young for that!"};
     const o=S.c.filter(x=>x!==c&&x.col===c.col&&!x.partner&&x.age>=18&&x.sex!==c.sex&&!x.transit).sort((a,b)=>(b.sp===c.sp)-(a.sp===c.sp))[0];
     if(!o)return{say:'There is nobody single around here. Maybe on another planet?'};c.partner=o.id;o.partner=c.id;findHome(o);if(o.home!==c.home)findHome(c);
     log(`${nameOf(c)} took advice from the sky and asked ${nameOf(o)} out. ${o.fn} said YES!`,'life',c.x,c.y,c.col);return{say:`I asked ${o.fn}... and they said YES! 💕`,done:`asked ${o.fn} to be partners and they said yes`}}
   if(W(/\b(have a baby|start a family|have kids|have a kid|make a baby)\b/)){const p=c.partner&&CM.get(c.partner),h=c.home&&BM.get(c.home);if(!p)return{say:'I need a partner first! Tell me to find one.'};
-    const mom=c.sex==='f'?c:p;if(!h||h.res.length>=capOf(h))return{say:'Our home is full! We need a bigger place first.'};if(mom.age>lifeOf(mom)*.55||mom.age<18)return{say:'Not at our age!'};if(day()-(c.famDay||-9)<2)return{say:'We JUST had a baby! Give us a couple of days.'};
+    const mom=c.sex==='f'?c:p;if(!h)return{say:"We don't have a home yet! Tell me to build a house."};if(h.res.length>=capOf(h))return{say:`Our ${TYPES[h.type].name} is full (${h.res.length}/${capOf(h)}). Tell me to build a house or a tower!`};if(mom.age>lifeOf(mom)*.55||mom.age<18)return{say:'Not at our age!'};if(day()-(c.famDay||-9)<2)return{say:'We JUST had a baby! Give us a couple of days.'};
     c.famDay=day();const ksp=c.sp===p.sp?c.sp:hybridOf(c.sp,p.sp);const k=newCitizen(col,ksp,rand()<.5?'f':'m',0);k.x=h.x;k.y=h.y;k.inB=h.id;h.res.push(k.id);k.home=h.id;S.sp[ksp].b++;
     log(`Baby ${k.fn} was born to ${c.fn} and ${p.fn} on ${col.name}, thanks to some encouragement from the sky!`,'birth',h.x,h.y,col.id);return{say:`Meet baby ${k.fn}! 👶`,done:`had a baby named ${k.fn}`}}
   if(W(/\b(use your power|use power|superpower|fly)\b/)){if(!c.pwOn)return{say:"I don't have any powers! I wish."};
@@ -1277,6 +1303,12 @@ function hybridOf(a,b){S.hyb=S.hyb||{};const k=Math.min(a,b)+'-'+Math.max(a,b);i
   const def={one,many:one+'s',color:mixHex(A.color,B.color),hunger:av('hunger'),life:Math.round((A.life+B.life)/2),fert:av('fert'),o2:av('o2'),ill:av('ill'),night:!!(A.night||B.night),workMul:Math.max(A.workMul||1,B.workMul||1),funMul:A.funMul||B.funMul,hapBonus:Math.max(A.hapBonus||0,B.hapBonus||0),
     from:[a,b],iq0:Math.round(((S.iq?S.iq[a]:IQ0[a])+(S.iq?S.iq[b]:IQ0[b]))/2),perk:`Hybrid of ${A.many} and ${B.many}. Mixes traits from both.`,relax:`Half like a ${A.one}, half like a ${B.one}.`};
   def.born=day();const i=addSpecies(def);S.hyb[k]=i;return i}
+const MUTP=['Neo','Mega','Ultra','Cosmo','Glitch','Star','Hyper','Prism','Shadow','Sparkle'];
+function mutantOf(sp){const P=SPECIES[sp],o=(sp+1+((rand()*(BASE_N-1))|0))%BASE_N;let one=pick(MUTP)+P.one.toLowerCase();while(SPECIES.some(x=>x.one===one))one=pick(MUTP)+one.toLowerCase();
+  const hue=(rand()*360)|0,tw=f=>+((P[f]||1)*(.75+rand()*.6)).toFixed(2);
+  const def={...P,one,many:one+'s',from:[sp,o],color:(()=>{const h2=hue/60,c2=.7*.76,x=c2*(1-Math.abs(h2%2-1)),m=.62-c2/2,[r,g,b]=h2<1?[c2,x,0]:h2<2?[x,c2,0]:h2<3?[0,c2,x]:h2<4?[0,x,c2]:h2<5?[x,0,c2]:[c2,0,x];return'#'+[r,g,b].map(v=>Math.round((v+m)*255).toString(16).padStart(2,'0')).join('')})(),hunger:tw('hunger'),life:Math.round(P.life*(.8+rand()*.5)),fert:tw('fert'),ill:tw('ill'),workMul:+((P.workMul||1)*(1+rand()*.4)).toFixed(2),iq0:Math.round((S.iq?S.iq[sp]:IQ0[sp])+(rand()*20-6)),born:day(),
+    perk:`Mutant ${P.many}. A 1-in-100 birth with strange new traits.`,relax:'Glowing quietly in a corner.'};delete def.adapt;if(P.night)def.night=true;
+  return addSpecies(def)}
 function adaptOf(sp,p){S.adp=S.adp||{};const k=sp+'@'+p;if(S.adp[k]!=null)return S.adp[k];const P=SPECIES[sp],ch=PCH[p];
   let one=ch.adj+P.one.toLowerCase();if(SPECIES.some(x=>x.one===one))one+='i';
   const def={...P,one,many:one+'s',from:[P.from?P.from[0]:sp,P.from?P.from[1]:sp],adapt:p,color:BIOME[PL[p].biome].dot,iq0:Math.round((S.iq?S.iq[sp]:IQ0[sp])+3),
@@ -1293,7 +1325,7 @@ function renderSpecies(){
       const tags=(c.pwOn?'⚡'+POWERS[c.pw]+' ':'')+(c.agent?'◆Agent ':'')+(c.patron?'♛Patron':'');
       return`<tr data-cid="${c.id}"><td><b style="font:700 13px var(--body)">${c.fn}</b> ${c.sex==='f'?'♀':'♂'}</td><td>${c.age}</td><td>${SKILLS[c.skill]}</td><td>${Math.round(c.iq||100)}</td><td>${mini(c.hp,'#ef6a5a')}</td><td>${mini(c.hap,'#62c6b2')}</td><td>${mini(c.hu,'#f2b24a')}</td>
         <td>${jb?TYPES[jb.type].name:(c.age<18?'Student':c.age>=lifeOf(c)*.8?'Retired':'Looking')}</td><td>${c.transit?'In space':colById(c.col).name}</td><td>${p?p.fn:'–'}</td><td>${ACT[c.act]||c.act}${c.sick?' · sick':''}</td><td class="tag">${tags}</td></tr>`}).join('');
-    return`<details class="sp${al.length?'':' out'}" data-sp="${i}" style="--c:${sp.color}"${spOpen.has(i)?' open':''}><summary><span class="pics"><img src="${SPF[i]}" alt=""><img src="${SPURL[i]}" alt=""></span><b>${sp.many}<em>${al.length?al.length+' alive':'extinct'} · ${bornN} born · ${diedN} died${al.length?' · IQ '+iqStr(i):''}</em></b><small>${sp.perk}</small></summary>
+    return`<details class="sp${al.length?'':' out'}" data-sp="${i}" style="--c:${sp.color}"${spOpen.has(i)?' open':''}><summary><span class="pics"><img src="${SPF[i]}" alt=""><img src="${SPURL[i]}" alt=""></span><b>${sp.many}<em>${al.length?al.length+' alive':'extinct'} · ${bornN} born · ${diedN} died${al.length?' · IQ '+iqStr(i):''}</em></b><small>${sp.from&&sp.adapt==null&&sp.from[0]!==sp.from[1]?'🧬 '+SPECIES[sp.from[0]].one+' × '+SPECIES[sp.from[1]].one+' · ':''}${sp.perk}</small></summary>
       <div class="tw">${al.length?`<table class="ct"><tr><th>Name</th><th>Age</th><th>Skill</th><th>IQ</th><th>Health</th><th>Mood</th><th>Fed</th><th>Job</th><th>Planet</th><th>Partner</th><th>Doing</th><th>Special</th></tr>${rows}</table>`:'<div class="hint">No one left.</div>'}</div></details>`}).join('');
 }
 document.addEventListener('toggle',e=>{const d=e.target;if(!d.matches||!d.matches('details.sp'))return;const i=+d.dataset.sp;if(d.open)spOpen.add(i);else spOpen.delete(i)},true);
@@ -1633,7 +1665,7 @@ function updatePanel(){
     <div class="meter"><span>Health</span>${bar(c.hp,'#ef6a5a')}</div><div class="meter"><span>Energy</span>${bar(c.en,'#62c6b2')}</div><div class="meter"><span>Fed</span>${bar(c.hu,'#f2b24a')}</div><div class="meter"><span>Fun</span>${bar(c.fun,'#a99af2')}</div>
     <div class="meta" style="margin-top:8px">Partner: ${p?p.fn:'none'} · Home: ${hm?TYPES[hm.type].name:'none'} · Job: ${jb?TYPES[jb.type].name:(c.age<18?'student':c.age>=lifeOf(c)*.8?'retired':'looking')} · ${Math.floor(c.coins)} coins</div>
     <div class="meta">${sp.perk}</div>
-    <div class="talk" data-talk="${c.id}"><div class="msgs"></div><form data-talkform="${c.id}"><input placeholder="Talk to ${c.fn}, or tell them what to do…" maxlength="160" aria-label="Message to ${c.fn}"><button class="solo" type="submit">Talk</button></form><div class="hint">Try: "go to the park" · "build a water park" · "go eat" · "dance" · "find a partner" · "use your power"</div></div>
+    <div class="talk" data-talk="${c.id}"><div class="msgs"></div><form data-talkform="${c.id}"><input placeholder="Talk to ${c.fn}, or tell them what to do…" maxlength="160" aria-label="Message to ${c.fn}"><button class="solo" type="submit">Talk</button></form><div class="hint">Try: "go to the park" · "build a water park" · "go eat" · "dance" · "date a Bolt" · "start a family" · "use your power"</div></div>
     <div class="bar" style="margin-top:6px"><button class="solo" data-act="walk">Walk with them</button><button class="solo" data-act="fp">First person 3D</button><button class="solo" data-act="follow">${cam.mode==='follow'&&cam.fcid===c.id?'Following':'Follow'}</button></div>`}
   else if(sel&&sel.k==='b'&&BM.has(sel.id)){const b=BM.get(sel.id),names=ids=>ids.map(i=>CM.get(i)).filter(Boolean).map(c=>`${c.fn} (${spOf(c).one}${TYPES[b.type].skill===c.skill?', '+SKILLS[c.skill]:''})`).join(', ')||'nobody';
     h=`<div class="who">${TYPES[b.type].name}</div><div class="meta">${colById(b.col).name} · ${b.prog<1?`under construction, ${Math.round(b.prog*100)}%`:b.cond<10?'<span style="color:var(--warn)">broken, needs a fixer</span>':`condition ${Math.round(b.cond)}%`}</div>
