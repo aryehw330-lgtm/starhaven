@@ -125,6 +125,8 @@ body.public .owner{display:none!important}
 .spot .sh{display:flex;gap:10px;align-items:center;margin-bottom:6px}.spot img{width:45px;height:55px;image-rendering:pixelated}
 .spot b{font:700 18px var(--display);display:block}.spot small{color:var(--star);font:500 11px var(--mono);letter-spacing:1px}
 .spot .q{font-style:italic;color:var(--muted);margin-top:6px}
+.pop.talking .meter,.pop.talking .thought,.pop.talking .meta:not(:first-of-type){display:none}
+.pop.talking{max-height:55%}
 .talk{margin-top:8px;display:flex;flex-direction:column;gap:6px}
 .talk .msgs{display:flex;flex-direction:column;gap:5px;max-height:180px;overflow:auto}
 .talk .m{padding:6px 9px;border-radius:8px;font-size:13px;line-height:1.35}
@@ -1026,24 +1028,28 @@ const MEAN=/\b(hate|stupid|dumb|ugly|loser|boring|worst|gross|idiot|shut up|lame
 function moodFrom(c,q){let d=0;if(NICE.test(q))d=12;else if(MEAN.test(q))d=-10;else d=3;
   c.fun=Math.max(30,Math.min(100,c.fun+d));c.hap=Math.max(30,Math.min(100,(c.hap||60)+d*.6));c.cheers=(c.cheers||0)+(d>0?1:0);
   if(d>0&&c.cheers%5===0)log(`${nameOf(c)} has been cheered on by viewers ${c.cheers} times. They're glowing with confidence.`,'party',c.x,c.y,c.col);return d}
-function quickReply(c,q){const ql=q.toLowerCase(),sp=spOf(c),col=colById(c.col),p=c.partner&&CM.get(c.partner),jb=c.job&&BM.get(c.job);
-  if(NICE.test(q))return pick([`Aww, you made my whole day!`,`Stop it, I'm blushing. ${sp.one}s can blush, you know.`,`Thank you, voice from the sky! I'll tell everyone.`,`That's the nicest thing anyone has said to me since the landing.`]);
+function moodLine(c){const parts=[];if(c.sick)parts.push('sick');if(c.hu<35)parts.push('really hungry');if(c.en<30)parts.push('super sleepy');if(c.fun<35)parts.push('kind of bored');
+  if(!parts.length)return pick(['Doing great, thanks for asking!','Never better! This colony is the best.','Pretty good! Just living the space life.']);return`Honestly? I'm ${parts.join(' and ')}. ${c.hu<35?'Tell me to go eat!':c.en<30?'Tell me to go to bed!':c.fun<35?'Tell me to go to the park!':''}`}
+function quickReply(c,q){const ql=q.toLowerCase(),sp=spOf(c),col=colById(c.col),p=c.partner&&CM.get(c.partner),jb=c.job&&BM.get(c.job),W=re=>re.test(ql);
+  if(NICE.test(q))return pick([`Aww, you made my whole day!`,`Stop it, I'm blushing. ${sp.many} can blush, you know.`,`Thank you, voice from the sky! I'll tell everyone.`,`That's the nicest thing anyone has said to me since the landing.`]);
   if(MEAN.test(q))return pick([`Rude! I'm telling the Mayor.`,`Wow. Okay. I'm going to go sit in the garden now.`,`Sticks and stones may break my bones, but I'm a ${sp.one}.`,`Somebody needs a nap and it's not me.`]);
-  if(/name/.test(ql))return`I'm ${c.fn}! ${c.fn} the ${sp.one}. Nice to meet you, sky voice.`;
-  if(/old|age/.test(ql))return`I'm ${c.age}. ${c.age<10?'Almost a grown-up!':c.age>lifeOf(c)*.7?'Old enough to remember the landing.':'Prime of my life!'}`;
-  if(/where|planet|live/.test(ql))return`I live on ${col.name}. ${pc(col).name==='Balanced'?'It\'s pretty cozy.':'Watch out for the '+pc(col).name.toLowerCase()+'.'}`;
-  if(/food|eat|hungry/.test(ql))return c.hu<40?'SO hungry. Is the Galley open?':'I just ate. The Galley soup was suspicious but tasty.';
-  if(/scared|afraid|danger|meteor|alien|ufo/.test(ql))return pick(['Meteors, aliens, and the saboteur. Sleeping with one eye open.','I saw a UFO once. It took my neighbor. Then gave him back with laser eyes.']);
-  if(/mayor|vote|elect/.test(ql)){const m=S.mayor&&CM.get(S.mayor.id);return m?`${m.fn} is our Mayor. ${m.sp===c.sp?'Great choice, obviously.':'Not who I voted for...'}`:'No Mayor yet. I might run!'}
-  if(/saboteur|villain|who did/.test(ql))return c.villain?'Me? Sabotage? No idea what you\'re talking about. *shifty eyes*':'I have my suspicions. Someone has been sneaking around at night.';
-  if(/doing|up to|busy/.test(ql))return`Right now I'm ${(ACT[c.act]||c.act).toLowerCase()}. ${c.th}`;
-  if(/kid|child|baby|family/.test(ql))return p?`Me and ${p.fn} are a team. ${S.c.some(k=>k.age<18&&k.home===c.home)?'And the kids keep us busy!':'Maybe a little one someday!'}`:'No family yet. Working on it.';
-  if(/bye|goodnight|see you/.test(ql))return pick(['Bye! Come back tomorrow!','Goodnight, sky voice!','See you in the next episode!']);
-  if(/how are|how r u|feel/.test(ql))return c.th;if(/joke|funny/.test(ql))return pick(JOKES).join(' ');if(/power/.test(ql))return c.pwOn?`I have ${POWERS[c.pw]}. Don't tell the council.`:'No powers. Unless napping counts.';
-  if(/love|partner|date/.test(ql))return p?`${p.fn} is my everything. Well, ${p.fn} and snacks.`:`Still single. Know any nice ${sp.many}?`;
-  if(/job|work/.test(ql))return`I'm ${/^[aeiou]/i.test(SKILLS[c.skill])?'an':'a'} ${SKILLS[c.skill].toLowerCase()}${jb?' at the '+TYPES[jb.type].name:''}. ${TH.skill[c.skill]}`;
-  if(/^(hi|hello|hey|yo)\b/.test(ql))return pick([`Hi! I'm ${c.fn}.`,'Oh! A voice from the sky!','Hello, mysterious stranger.']);
-  return pick([...TH.funny,`Hmm, good question. I'll ask the Mayor.`,`I don't know, but I'm ${Math.round(c.iq)} IQ, so probably something smart.`])}
+  if(W(/\b(your name|who are you|what are you)\b/))return`I'm ${c.fn} the ${sp.one}! ${sp.perk}`;
+  if(W(/\b(how old|your age|age)\b/))return`I'm ${c.age}. ${c.age<10?'Almost a grown-up!':c.age>lifeOf(c)*.7?'Old enough to remember the landing.':'Prime of my life!'}`;
+  if(W(/\b(where do you live|which planet|what planet|where are you)\b/))return`I live on ${col.name}. ${pc(col).name==='Balanced'?'It\'s pretty cozy here.':'Watch out for the '+pc(col).name.toLowerCase()+'.'}`;
+  if(W(/\b(hungry|food|eat|ate|eating)\b/))return c.hu<40?'SO hungry. Tell me to go eat and I will!':'I just ate. The Galley soup was suspicious but tasty.';
+  if(W(/\b(scared|afraid|danger|meteor|alien|aliens|ufo)\b/))return pick(['Meteors, aliens, and the saboteur. I sleep with one eye open.','I saw a UFO once. It took my neighbor, then gave him back with superpowers.']);
+  if(W(/\b(mayor|vote|election)\b/)){const m=S.mayor&&CM.get(S.mayor.id);return m?`${m.fn} is our Mayor. ${m.sp===c.sp?'Great choice, obviously.':'Not who I voted for...'}`:'No Mayor yet. I might run!'}
+  if(W(/\b(saboteur|villain|traitor)\b/))return c.villain?'Me? Sabotage? No idea what you\'re talking about. *shifty eyes*':'I have my suspicions. Someone sneaks around at night.';
+  if(W(/\b(what are you doing|what's up|whats up|busy)\b/))return`Right now I'm ${(ACT[c.act]||c.act).toLowerCase()}. ${c.th}`;
+  if(W(/\b(kids?|children|baby|family)\b/))return p?`${p.fn} and I are a team. ${S.c.some(k=>k.age<18&&k.home===c.home&&k!==c)?'And the kids keep us busy!':'Tell us to start a family and maybe we will!'}`:'No family yet. Tell me to find a partner!';
+  if(W(/\b(bye|goodbye|goodnight|good night|see you|later)\b/))return pick(['Bye! Come back tomorrow!','Goodnight, sky voice!','See you in the next episode!']);
+  if(W(/\b(how are you|how r u|how do you feel|you ok|you okay|are you ok|are you okay)\b/))return moodLine(c);
+  if(W(/\b(joke|funny)\b/))return pick(JOKES).join(' ');
+  if(W(/\b(power|superpower|powers)\b/))return c.pwOn?`I have ${POWERS[c.pw]}. Tell me to use it!`:'No powers. Unless napping counts.';
+  if(W(/\b(love|partner|date|girlfriend|boyfriend|married|marry)\b/))return p?`${p.fn} is my everything. Well, ${p.fn} and snacks.`:`Still single. Tell me to find a partner!`;
+  if(W(/\b(job|work|do for a living)\b/))return`I'm ${/^[aeiou]/i.test(SKILLS[c.skill])?'an':'a'} ${SKILLS[c.skill].toLowerCase()}${jb?' at the '+TYPES[jb.type].name:', but I need a job'}. ${TH.skill[c.skill]}`;
+  if(W(/^(hi|hello|hey|yo|sup|howdy)\b/))return pick([`Hi! I'm ${c.fn}. Tell me to do something!`,'Oh! A voice from the sky! Hello!','Hello, mysterious stranger.']);
+  return pick([`Hmm, I didn't quite get that. You can tell me to go to the park, eat, sleep, work, build something, dance, or find a partner!`,`I'm just a ${sp.one}, so keep it simple! Try "go to the park" or "build a water park".`,`Huh? You lost me there. Ask me how I'm doing, or tell me to go eat, dance, or build something!`])}
 function quickReplyOld(c,q){const ql=q.toLowerCase(),sp=spOf(c);
   if(/how are|how r u|feel/.test(ql))return c.th;if(/joke|funny/.test(ql))return pick(JOKES).join(' ');if(/power/.test(ql))return c.pwOn?`I have ${POWERS[c.pw]}. Don't tell the council.`:'No powers. Unless napping counts.';
   if(/love|partner|date/.test(ql)){const p=c.partner&&CM.get(c.partner);return p?`${p.fn} is my everything. Well, ${p.fn} and snacks.`:`Still single. Know any nice ${sp.many}?`}
@@ -1059,15 +1065,87 @@ function startTalk(c){
   if(!(G&&G.on)){if(c.col!==S.view)setView(c.col,true);setCam('follow');cam.fcid=c.id}cam.talkUntil=performance.now()+14000;
 }
 function react(c,kind){c.emo={t:pick(EMO[kind]||EMO.q),until:performance.now()+4500};c.jump=performance.now()+1200}
+const PLACES=[
+  [/\b(water ?park|swim|swimming|pool|slides?)\b/,['water'],'play',100,'the Water Park'],
+  [/\b(amusement park|theme park|ferris wheel|ferris|rides?|roller ?coaster)\b/,['amuse'],'play',100,'the Amusement Park'],
+  [/\b(mall|shop|shopping)\b/,['mall'],'play',90,'the Mega Mall'],
+  [/\b(park|garden|relax|chill|play)\b/,['garden','amuse','water'],'play',90,'the park'],
+  [/\b(eat|food|lunch|dinner|breakfast|snack|galley|restaurant)\b/,['galley'],'eat',40,'the Galley'],
+  [/\b(sleep|bed|nap|rest)\b/,'HOME','sleep',180,'bed'],
+  [/\b(home|house)\b/,'HOME','home',60,'home'],
+  [/\b(work|job)\b/,'JOB','work',120,'work'],
+  [/\b(hospital|doctor|med ?bay|heal)\b/,['med'],'heal',120,'the Med Bay'],
+  [/\b(school|academy|learn|study|class)\b/,['academy'],'study',90,'the Academy'],
+  [/\b(lab|science|research)\b/,['lab'],'visit',60,'the Science Lab'],
+  [/\b(farm)\b/,['farm'],'visit',60,'the farm'],
+  [/\b(spaceport|rocket)\b/,['port'],'visit',60,'the Spaceport'],
+  [/\b(market|trade hub)\b/,['trade'],'visit',60,'the Trade Hub'],
+  [/\b(dome|council|town hall)\b/,['hall'],'visit',60,'the Command Dome']];
+const BUILDK=[[/\bsky ?scraper\b/,'sky'],[/\b(mega )?mall\b/,'mall'],[/\b(amusement|theme) park\b|\bferris\b/,'amuse'],[/\bwater ?park\b/,'water'],[/\b(park|garden)\b/,'garden'],[/\bfarm\b/,'farm'],
+  [/\b(tower|apartment|apartments)\b/,'apt'],[/\b(house|home|pod)\b/,'home'],[/\b(hospital|med ?bay|clinic)\b/,'med'],[/\b(school|academy)\b/,'academy'],[/\blab\b/,'lab'],[/\b(oxygen|o2|air)\b/,'o2'],
+  [/\brepair\b/,'repair'],[/\b(factory|fabricator)\b/,'fab'],[/\b(market|trade)\b/,'trade'],[/\b(spaceport|rocket)\b/,'port'],[/\b(restaurant|galley|kitchen|cafe)\b/,'galley']];
+function goTo(c,g){const col=colById(c.col),tb=BM.get(g.b),cur=c.inB&&BM.get(c.inB);const from=cur?idx(cur.x,cur.y):idx(Math.round(c.x),Math.round(c.y));if(cur){c.x=cur.x;c.y=cur.y}c.inB=0;
+  const p=findPath(col,from,idx(tb.x,tb.y));c.goal=g;if(!p||!p.length){c.x=tb.x;c.y=tb.y;arrive(c);return}c.path=p;c.pi=0;c.act='walk'}
+function nearestOf(c,types){let best=null,bd=1e9;for(const b of S.b){if(b.col!==c.col||!works(b)||!types.includes(b.type))continue;const d=Math.hypot(b.x-c.x,b.y-c.y);if(d<bd){bd=d;best=b}}return best}
+function runCommand(c,q){
+  const ql=q.toLowerCase().trim(),W=re=>re.test(ql),col=colById(c.col);
+  const asked=/\b(go|goto|head|walk|run|visit|take|let'?s|lets|time to|please|can you|could you|will you|would you|you should|i want you to|do|start|use|build|make|construct|find|have|get|move|fly|travel|fix|repair|dance|party|tell)\b/.test(ql)||/^[a-z]+\b/.test(ql)&&!/\?$/.test(ql);
+  const isQuestion=/\?$/.test(ql)&&!/\b(can you|could you|will you|would you|please)\b/.test(ql);
+  if(isQuestion||!asked)return null;
+  if(c.ctrl)return{say:`You're already controlling me! Use the buttons.`};
+  if(c.transit)return{say:`I'm on a spaceship right now. Ask me when I land!`};
+  // build
+  if(W(/\b(build|make|construct|create|put up)\b/)){const hit=BUILDK.find(([re])=>re.test(ql));if(!hit)return{say:'Build what? Try a farm, a park, a water park, an amusement park, a mall or a skyscraper!'};
+    const t=hit[1],lock=(t==='apt'&&S.tech<1)||(t==='port'&&S.tech<2)||(t==='sky'&&S.tech<3)||(['amuse','water','mall'].includes(t)&&S.tech<2);
+    if(lock)return{say:`We haven't invented the tech for a ${TYPES[t].name} yet. The scientists are working on it!`,done:'refused: tech not invented'};
+    if(S.credits<TYPES[t].cost)return{say:`A ${TYPES[t].name} costs ${TYPES[t].cost} credits and we only have ${Math.floor(S.credits)}. Maybe later!`,done:'refused: not enough credits'};
+    const r=build(t,col,`${c.fn} asked for it after a voice from the sky suggested it`);if(!r)return{say:`There's no room for a ${TYPES[t].name} here right now.`};
+    const nb=S.b[S.b.length-1];goTo(c,{b:nb.id,act:'visit',dur:40});cam.talkUntil=performance.now()+20000;
+    return{say:pick([`On it! I convinced the council. A ${TYPES[t].name} is going up!`,`Great idea! Construction on the ${TYPES[t].name} starts now. I'll go supervise.`]),done:`convinced the council to build a ${TYPES[t].name}, walking over to supervise`}}
+  // travel to planet
+  const pl=S.cols.find(x=>new RegExp('\\b'+x.name.toLowerCase()+'\\b').test(ql));
+  if(pl&&W(/\b(go|move|fly|travel|visit|take a ship|shuttle)\b/)){if(pl.id===c.col)return{say:`I'm already on ${pl.name}!`};if(!portOf(col)||!portOf(pl))return{say:`We need Spaceports on both planets to fly there.`};
+    launchShip(col,pl,[c],'shuttle');log(`${nameOf(c)} boarded a shuttle to ${pl.name} because a voice from the sky said so.`,'ship',c.x,c.y,col.id);return{say:`Packing my bags! Off to ${pl.name}!`,done:`boarded a shuttle to ${pl.name}`}}
+  if(W(/\b(dance|party|celebrate|boogie)\b/)){c.fun=100;react(c,'joke');c.jump=performance.now()+3000;for(let k=0;k<4;k++)setTimeout(()=>fx({k:'firework',col:c.col,x:c.x+(Math.random()-.5)*4,y:c.y-1,dur:1500,h:Math.random()*360}),k*300);
+    return{say:pick(['Watch these moves! 💃','Party time! Everybody dance!','I was BORN for this.']),done:'started dancing'}}
+  if(W(/\b(fix|repair)\b/)){const bs=S.b.filter(b=>b.col===c.col&&b.prog>=1&&b.cond<70).sort((a,b)=>a.cond-b.cond);if(!bs.length)return{say:'Everything here is in great shape already!'};
+    const b=bs[0];b.cond=Math.min(100,b.cond+(c.skill==='fixer'?70:40));goTo(c,{b:b.id,act:'visit',dur:40});return{say:`Grabbing my tools! Heading to fix the ${TYPES[b.type].name}.`,done:`went to repair the ${TYPES[b.type].name}`}}
+  if(W(/\b(find a partner|get married|marry|find love|date someone|girlfriend|boyfriend)\b/)){if(c.partner)return{say:`I already have ${CM.get(c.partner)?CM.get(c.partner).fn:'someone'}!`};if(c.age<18)return{say:"I'm too young for that!"};
+    const o=S.c.filter(x=>x!==c&&x.col===c.col&&!x.partner&&x.age>=18&&x.sex!==c.sex&&!x.transit).sort((a,b)=>(b.sp===c.sp)-(a.sp===c.sp))[0];
+    if(!o)return{say:'There is nobody single around here. Maybe on another planet?'};c.partner=o.id;o.partner=c.id;findHome(o);if(o.home!==c.home)findHome(c);
+    log(`${nameOf(c)} took advice from the sky and asked ${nameOf(o)} out. ${o.fn} said YES!`,'life',c.x,c.y,c.col);return{say:`I asked ${o.fn}... and they said YES! 💕`,done:`asked ${o.fn} to be partners and they said yes`}}
+  if(W(/\b(have a baby|start a family|have kids|have a kid|make a baby)\b/)){const p=c.partner&&CM.get(c.partner),h=c.home&&BM.get(c.home);if(!p)return{say:'I need a partner first! Tell me to find one.'};
+    const mom=c.sex==='f'?c:p;if(!h||h.res.length>=capOf(h))return{say:'Our home is full! We need a bigger place first.'};if(mom.age>lifeOf(mom)*.55||mom.age<18)return{say:'Not at our age!'};if(day()-(c.famDay||-9)<2)return{say:'We JUST had a baby! Give us a couple of days.'};
+    c.famDay=day();const ksp=c.sp===p.sp?c.sp:hybridOf(c.sp,p.sp);const k=newCitizen(col,ksp,rand()<.5?'f':'m',0);k.x=h.x;k.y=h.y;k.inB=h.id;h.res.push(k.id);k.home=h.id;S.sp[ksp].b++;
+    log(`Baby ${k.fn} was born to ${c.fn} and ${p.fn} on ${col.name}, thanks to some encouragement from the sky!`,'birth',h.x,h.y,col.id);return{say:`Meet baby ${k.fn}! 👶`,done:`had a baby named ${k.fn}`}}
+  if(W(/\b(use your power|use power|superpower|fly)\b/)){if(!c.pwOn)return{say:"I don't have any powers! I wish."};
+    if(S.t<(c.pwCd||0))return{say:'My power is recharging. Give me a few hours!'};c.pwCd=S.t+360;fx({k:'spark',col:c.col,x:c.x,y:c.y,dur:3000});
+    if(c.pw==='heal'){const n=S.c.filter(x=>x.col===c.col&&x.sick);for(const x of n){x.sick=0;x.hp=100}return{say:`Healing touch! ${n.length} sick citizens feel better!`,done:'healed everyone who was sick'}}
+    if(c.pw==='breath'){col.o2+=200;return{say:'Fresh air for everyone! +200 oxygen!',done:'made 200 oxygen'}}
+    if(c.pw==='mind'){S.research+=40;return{say:'BRAINSTORM! I just solved three science problems.',done:'boosted research'}}
+    if(c.pw==='build'){const b=S.b.find(b=>b.col===c.col&&b.prog<1);if(b){b.prog=1;b.cond=100;return{say:`Hnnng! The ${TYPES[b.type].name} is done!`,done:'finished a building with telekinesis'}}return{say:'Nothing to build right now!'}}
+    c.jump=performance.now()+2500;return{say:c.pw==='flight'?'WHOOSH! Did you see that?!':'ZOOM! Faster than light!',done:'showed off their power'}}
+  if(W(/\b(follow|come here|come back|stay|stop|wait)\b/)){c.path=null;c.goal=null;c.act='hang';c.until=S.t+120;return{say:"Okay! I'll stay right here.",done:'stopped and waited'}}
+  // go to a place
+  for(const[re,types,act,dur,label]of PLACES){if(!re.test(ql))continue;
+    let b=null;if(types==='HOME')b=c.home&&BM.get(c.home);else if(types==='JOB')b=c.job&&BM.get(c.job);else b=nearestOf(c,types);
+    if(!b||b.prog<1){if(types==='JOB')return{say:"I don't have a job yet! Build something that needs a "+SKILLS[c.skill].toLowerCase()+'.'};if(types==='HOME')return{say:"I don't have a home yet!"};return{say:`There's no ${label.replace(/^the /,'')} on ${col.name} yet. Tell me to build one!`}}
+    if(act==='eat'&&col.food<1)return{say:'There is no food left on the whole planet!'};
+    goTo(c,{b:b.id,act,dur});cam.talkUntil=performance.now()+20000;
+    return{say:pick([`On my way to ${label}!`,`Good idea! Heading to ${label} now.`,`You got it! ${label[0].toUpperCase()+label.slice(1)}, here I come.`]),done:`headed to ${label}`}}
+  return null;
+}
 async function talkTo(c,q,el){
   startTalk(c);
   const L=talkLog.get(c.id)||[];L.push({me:1,t:q});talkLog.set(c.id,L);renderTalk(c,el);const md=moodFrom(c,q);
   react(c,/joke|funny|haha|lol/i.test(q)?'joke':md>5?'nice':md<0?'mean':'q');
   bubbles=bubbles.filter(b=>b.cid!==c.id);bubbles.push({cid:c.id,txt:'…',until:performance.now()+2500});
+  const cmd=runCommand(c,q);if(cmd&&cmd.done&&!/^refused/.test(cmd.done))log(`A voice from the sky told ${nameOf(c)} what to do: ${c.fn} ${cmd.done}.`,'chat',c.x,c.y,c.col);
+  if(cmd&&(!SAMPLE||!cmd.done)){const a2=cmd.say;L.push({t:a2});setTimeout(()=>{bubbles=bubbles.filter(b=>b.cid!==c.id);bubbles.push({cid:c.id,txt:a2,until:performance.now()+8000});react(c,'nice')},700);renderTalk(c,el);return}
   if(!SAMPLE){const a2=quickReply(c,q);L.push({t:a2});setTimeout(()=>{bubbles=bubbles.filter(b=>b.cid!==c.id);bubbles.push({cid:c.id,txt:a2,until:performance.now()+8000});react(c,md>5?'nice':md<0?'mean':'q')},900);renderTalk(c,el);return}
   const p=c.partner&&CM.get(c.partner),hm=c.home&&BM.get(c.home),jb=c.job&&BM.get(c.job),sp=spOf(c);
   const ctx=`You are ${c.fn}, a ${c.age}-year-old ${c.sex==='f'?'female':'male'} ${sp.one} (${sp.perk}) living on the planet ${colById(c.col).name} in the Starhaven space colony. Skill: ${SKILLS[c.skill]}. IQ ${Math.round(c.iq||100)}. Job: ${jb?TYPES[jb.type].name:'none'}. Home: ${hm?TYPES[hm.type].name:'none'}. Partner: ${p?p.fn+' the '+spOf(p).one:'none'}. Mood ${Math.round(c.hap)}/100, health ${Math.round(c.hp)}, hunger ${Math.round(100-c.hu)}/100. ${c.pwOn?'Superpower: '+POWERS[c.pw]+'.':''} ${c.villain?'You are secretly the saboteur. Never admit it, but be shifty.':''} Right now you are ${(ACT[c.act]||c.act).toLowerCase()} and thinking: "${c.th}". Latest colony news: ${S.headline||'nothing big'}.
-A voice from the sky (a viewer of the live stream) is talking to you. Reply in character in 1-2 short, funny, family-friendly sentences. If they are kind, be delighted. If they are mean, be a little hurt but witty. No narration, just your words.`;
+A voice from the sky (a viewer of the live stream) is talking to you. ${cmd?'You just did what they asked: you '+cmd.done+'. Confirm it in character. ':'If they ask you to do something you cannot do, say so kindly and suggest something you can do (go to the park, eat, sleep, work, build something, dance, find a partner). Answer their actual question directly. '}Reply in character in 1-2 short, funny, family-friendly sentences. If they are kind, be delighted. If they are mean, be a little hurt but witty. No narration, just your words.`;
   const msgs=[{role:'user',content:ctx+'\n\nThe voice says: '+L[0].t}];for(let i=1;i<L.length;i++)msgs.push({role:L[i].me?'user':'assistant',content:L[i].t});
   const ans={t:'…'};L.push(ans);renderTalk(c,el);
   try{const r=await SAMPLE(msgs,{modelTier:'quick',cache:false,onText:({text})=>{ans.t=text;renderTalk(c,el)}});ans.t=r.text;
@@ -1284,7 +1362,8 @@ function updateCam(dt){
     if(!c||c.transit||(c.inB&&performance.now()-(cam.povIn||0)>4000)){if(c&&c.inB&&!cam.povIn){cam.povIn=performance.now()}else{povPick();c=CM.get(cam.fcid)}}
     if(c&&!c.inB)cam.povIn=0;
     if(c){if(c.col!==S.view)setView(c.col,true);const b=c.inB&&BM.get(c.inB);t={x:(b?b.x:c.x)*T+8,y:(b?b.y:c.y)*T+4,z:7*dpr}}}
-  if(cam.mode==='follow'){const c=CM.get(cam.fcid);if(c&&!c.transit){if(c.col!==S.view)setView(c.col,true);t={x:c.x*T+8,y:c.y*T+2,z:(talkCam()&&c.id===cam.fcid?7:4)*dpr}}else setCam('director')}
+  if(cam.mode==='follow'){const c=CM.get(cam.fcid);if(c&&!c.transit){if(c.col!==S.view)setView(c.col,true);{const tz=(talkCam()&&c.id===cam.fcid?6:4)*dpr;let ox2=0,oy2=0;const pe=$('pop');if(talkCam()&&popOpen&&pe&&!pe.hidden){const sr=stage.getBoundingClientRect();if(sr.width<520)oy2=(pe.offsetHeight*.5)*dpr/tz;else ox2=(pe.offsetWidth*.5+10)*dpr/tz}
+      t={x:c.x*T+8+ox2,y:c.y*T+2+oy2-(talkCam()?18*dpr/tz:0),z:tz}}}else setCam('director')}
   if(cam.mode==='director'){
     if(lastEvent&&performance.now()-lastEvent.rt<300&&lastEvent.x!=null){if(lastEvent.col&&lastEvent.col!==S.view)setView(lastEvent.col,true);cam.phase='close';cam.timer=7;cam.fcid=0;cam.fx=lastEvent.x;cam.fy=lastEvent.y;lastEvent.rt=0}
     cam.timer-=dt;
@@ -1505,9 +1584,10 @@ function renderPop(h){
       ${inside.length?`<p>${inside.slice(0,3).map(c=>`${c.fn} is ${(ACT[c.act]||c.act).toLowerCase()}.`).join(' ')}</p>`:''}`}
   else if(sel.k==='c'&&CM.has(sel.id))html=h;
   else{el.hidden=true;return}
-  if(!el.contains(document.activeElement)){el.innerHTML='<button class="x" data-act="close" aria-label="Close">✕</button>'+html;restoreTalk(el)}el.hidden=false;
+  if(!el.contains(document.activeElement)&&!(el.matches(':hover')&&!el.hidden&&el.dataset.sel===String(sel.k+sel.id))){el.dataset.sel=String(sel.k+sel.id);el.innerHTML='<button class="x" data-act="close" aria-label="Close">✕</button>'+html;restoreTalk(el)}el.hidden=false;
   const sr=stage.getBoundingClientRect(),w=el.offsetWidth,ht=el.offsetHeight;
-  if(talkCam()){el.style.left='auto';el.style.right='8px';el.style.top='8px';el.style.bottom='auto';return}el.style.right='auto';
+  el.classList.toggle('talking',talkCam()&&sel&&sel.k==='c');
+  if(talkCam()){if(sr.width<520){el.style.left='8px';el.style.right='auto';el.style.top='auto';el.style.bottom='56px'}else{el.style.left='auto';el.style.right='8px';el.style.top='auto';el.style.bottom='56px'}return}el.style.right='auto';
   if(sr.width<520){el.style.left='8px';el.style.top='auto';el.style.bottom='56px'}
   else{let x=popAt.x+16,y=popAt.y-40;if(x+w>sr.width-8)x=popAt.x-w-16;el.style.left=Math.max(8,x)+'px';el.style.top=Math.max(8,Math.min(y,sr.height-ht-60))+'px';el.style.bottom='auto'}
 }
@@ -1553,13 +1633,13 @@ function updatePanel(){
     <div class="meter"><span>Health</span>${bar(c.hp,'#ef6a5a')}</div><div class="meter"><span>Energy</span>${bar(c.en,'#62c6b2')}</div><div class="meter"><span>Fed</span>${bar(c.hu,'#f2b24a')}</div><div class="meter"><span>Fun</span>${bar(c.fun,'#a99af2')}</div>
     <div class="meta" style="margin-top:8px">Partner: ${p?p.fn:'none'} · Home: ${hm?TYPES[hm.type].name:'none'} · Job: ${jb?TYPES[jb.type].name:(c.age<18?'student':c.age>=lifeOf(c)*.8?'retired':'looking')} · ${Math.floor(c.coins)} coins</div>
     <div class="meta">${sp.perk}</div>
-    <div class="talk" data-talk="${c.id}"><div class="msgs"></div><form data-talkform="${c.id}"><input placeholder="Say something to ${c.fn}…" maxlength="160" aria-label="Message to ${c.fn}"><button class="solo" type="submit">Talk</button></form></div>
+    <div class="talk" data-talk="${c.id}"><div class="msgs"></div><form data-talkform="${c.id}"><input placeholder="Talk to ${c.fn}, or tell them what to do…" maxlength="160" aria-label="Message to ${c.fn}"><button class="solo" type="submit">Talk</button></form><div class="hint">Try: "go to the park" · "build a water park" · "go eat" · "dance" · "find a partner" · "use your power"</div></div>
     <div class="bar" style="margin-top:6px"><button class="solo" data-act="walk">Walk with them</button><button class="solo" data-act="fp">First person 3D</button><button class="solo" data-act="follow">${cam.mode==='follow'&&cam.fcid===c.id?'Following':'Follow'}</button></div>`}
   else if(sel&&sel.k==='b'&&BM.has(sel.id)){const b=BM.get(sel.id),names=ids=>ids.map(i=>CM.get(i)).filter(Boolean).map(c=>`${c.fn} (${spOf(c).one}${TYPES[b.type].skill===c.skill?', '+SKILLS[c.skill]:''})`).join(', ')||'nobody';
     h=`<div class="who">${TYPES[b.type].name}</div><div class="meta">${colById(b.col).name} · ${b.prog<1?`under construction, ${Math.round(b.prog*100)}%`:b.cond<10?'<span style="color:var(--warn)">broken, needs a fixer</span>':`condition ${Math.round(b.cond)}%`}</div>
     ${isHousing(b)?`<div class="meta">Residents (${b.res.length}/${capOf(b)}): ${names(b.res)}</div>`:''}
     ${TYPES[b.type].jobs?`<div class="meta">Workers (${b.wrk.length}/${TYPES[b.type].jobs}): ${names(b.wrk)}</div><div class="meta">Best staffed by a ${SKILLS[TYPES[b.type].skill].toLowerCase()}.</div>`:''}`}
-  if(!$('insp').contains(document.activeElement)){$('insp').innerHTML=h;restoreTalk($('insp'))}
+  if(!$('insp').contains(document.activeElement)&&!$('insp').matches(':hover')){$('insp').innerHTML=h;restoreTalk($('insp'))}
   renderPop(h);
   const lead=order[0],cap=housingCap(col);
   const H=[['Day',`${day()} · ${clk()}`],['Citizens',S.c.length],['Species',`${alive}/${SPECIES.length}`],['Planets',S.cols.length],['Leader',SPECIES[lead].many],['Era',ERA[S.era||1]],
