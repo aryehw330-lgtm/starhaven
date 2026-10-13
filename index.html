@@ -344,6 +344,14 @@ const SPECIES=[
 ];
 const SKILLS={genius:'Genius',engineer:'Engineer',fixer:'Fixer',cook:'Chef',farmer:'Farmer',medic:'Medic',teacher:'Teacher',pilot:'Pilot',leader:'Leader',artist:'Artist',trader:'Trader',worker:'Hard worker'};
 const SK=Object.keys(SKILLS);
+const LVN=['Novice','Skilled','Expert','Master','Legend'],LVX=[0,40,120,260,480];
+const ADV={genius:'Quantum Scientist',engineer:'Starship Architect',fixer:'Nano-Mechanic',cook:'Galactic Chef',farmer:'Terraformer',medic:'Gene Healer',teacher:'Mind Mentor',pilot:'Warp Ace',leader:'Visionary',artist:'Holo-Artist',trader:'Star Tycoon',worker:'Titan Worker'};
+const lvOf=c=>{const x=c.xp||0;let l=0;while(l<4&&x>=LVX[l+1])l++;return l};
+const knows=(c,k)=>c.skill===k||(c.sk2||[]).includes(k);
+const skTitle=c=>{const l=lvOf(c);return l>=4&&S.tech>=3?ADV[c.skill]:LVN[l]+' '+SKILLS[c.skill]};
+function skillUp(c,before){const l=lvOf(c);if(l<=before)return;const t=skTitle(c);
+  if(l>=2)log(`${nameOf(c)} leveled up! Now ${/^[aeiou]/i.test(t)?'an':'a'} ${t}.${l>=4?' The whole colony works faster around them.':''}`,l>=3?'power':'life',c.x,c.y,c.col);
+  if(l>=3&&typeof toast==='function')toast(`${c.fn}: ${t}!`);c.iq=(c.iq||100)+l}
 const TYPES={
   hall:{name:'Command Dome',cost:0,time:1,house:0,jobs:1,skill:'leader'},
   home:{name:'Hab Pod',cost:60,time:300,house:4,jobs:0},
@@ -597,11 +605,14 @@ function stepCitizen(c){
     switch(c.act){
       case'sleep':c.en+=.14;break;
       case'work':{const w=.06;c.coins+=w*.75;S.credits+=w*.25;c.en-=.01;
-        const skilled=TYPES[b.type].skill===c.skill,m=(sp.workMul||1)*(c.skill==='worker'?1.5:1)*(c.pwOn&&c.pw==='speed'?2:1)*Math.max(.6,Math.min(1.6,(c.iq||100)/100))*(sp.night?1.25*(pc(colById(c.col)).nightBonus||1):1);if(b.type==='lab'||b.type==='academy')c.iq=(c.iq||100)+.0008;if(c.pwOn&&c.pw==='mind')S.research+=.08;
-        b.on++;if(skilled)b.onSk++;b.out+=m*(skilled?(TYPES[b.type].f||1.5):1);break}
+        const bk=TYPES[b.type].skill,skilled=bk&&knows(c,bk),main=bk===c.skill,m=(sp.workMul||1)*(c.skill==='worker'?1.5:1)*(c.pwOn&&c.pw==='speed'?2:1)*Math.max(.6,Math.min(1.6,(c.iq||100)/100))*(sp.night?1.25*(pc(colById(c.col)).nightBonus||1):1);if(b.type==='lab'||b.type==='academy')c.iq=(c.iq||100)+.0008;if(c.pwOn&&c.pw==='mind')S.research+=.08;
+        b.on++;if(skilled)b.onSk++;
+        if(main){const l0=lvOf(c);c.xp=(c.xp||0)+.055*(colB(colById(c.col)).some(x=>x.type==='academy'&&x.onSk>0)?1.3:1)*Math.max(.7,(c.iq||100)/100);skillUp(c,l0)}
+        else if(bk&&!skilled){c.lx=c.lx||{};c.lx[bk]=(c.lx[bk]||0)+.015;if(c.lx[bk]>=60&&(c.sk2||[]).length<2){c.sk2=(c.sk2||[]).concat(bk);delete c.lx[bk];log(`${nameOf(c)} learned a new skill on the job: ${SKILLS[bk]}!`,'life',c.x,c.y,c.col)}}
+        b.out+=m*(skilled?(TYPES[b.type].f||1.5)*(main?1+.12*lvOf(c):1):1);break}
       case'heal':if(b.onSk>0){c.hp+=.3;if(c.hp>85)c.sick=0}else if(b.on>0){c.hp+=.12;if(c.hp>95)c.sick=0}else c.hp+=.03;break;
       case'play':if(b.type==='mall'&&c.coins>=1){c.coins-=.05;S.credits+=.05}c.fun+=(b.type==='amuse'?.9:b.type==='water'?.8:b.type==='mall'?.55:b.type==='garden'?.45:.3)*(b.type==='garden'&&b.onSk>0?1.6:1)*(sp.funMul?1.2:1);break;
-      case'study':c.fun+=.01;if(b.onSk>0){c.edu=(c.edu||0)+.01;c.iq=(c.iq||100)+.004}else c.iq=(c.iq||100)+.001;break;
+      case'study':c.fun+=.01;if(b.onSk>0){c.edu=(c.edu||0)+.01;c.iq=(c.iq||100)+.004;c.xp=(c.xp||0)+.012}else c.iq=(c.iq||100)+.001;break;
       case'visit':c.fun+=.15;break;
       case'home':c.en+=.03;c.fun+=.05;break;
     }
@@ -622,7 +633,7 @@ function findHome(c){
 function findJob(c){
   const ref=(c.home&&BM.get(c.home))||hallOf(c.col);let best=null,bd=1e9;
   for(const b of S.b){if(b.col!==c.col||b.prog<1||TYPES[b.type].jobs<=b.wrk.length)continue;
-    const d=Math.hypot(b.x-ref.x,b.y-ref.y)-(TYPES[b.type].skill===c.skill?30:0);if(d<bd){bd=d;best=b}}
+    const d=Math.hypot(b.x-ref.x,b.y-ref.y)-(TYPES[b.type].skill===c.skill?30:knows(c,TYPES[b.type].skill)?20:0);if(d<bd){bd=d;best=b}}
   if(best){best.wrk.push(c.id);c.job=best.id;
     if(TYPES[best.type].skill===c.skill&&rand()<.5)log(`${nameOf(c)}, a ${SKILLS[c.skill].toLowerCase()}, started work at the ${TYPES[best.type].name}.`,'life',best.x,best.y,c.col)}
 }
@@ -711,7 +722,7 @@ function newDay(){
     if(c.age===18){if((c.edu||0)<3){c.iq=(c.iq||100)-6;if(rand()<.4)log(`${nameOf(c)} grew up without proper schooling. It shows.`,'life',c.x,c.y,c.col)}else c.iq=(c.iq||100)+4}
     if(c.hap<35)c.iq=(c.iq||100)-.6;
     if(c.age>lifeOf(c)*.85)c.iq=(c.iq||100)-.4;
-    if(c.age===18&&rand()<.5)log(`${nameOf(c)} grew up and became a ${SKILLS[c.skill].toLowerCase()}.`,'life',c.x,c.y,c.col);
+    if(c.age===18){const pa=S.c.filter(x=>x.col===c.col&&x.skill===c.skill&&lvOf(x)>=3).length;if((c.edu||0)>=3)c.xp=Math.max(c.xp||0,40+(pa?40:0));if(rand()<.5)log(`${nameOf(c)} grew up and became ${pa?'an apprentice to the colony\'s master '+SKILLS[c.skill].toLowerCase()+'s':'a '+SKILLS[c.skill].toLowerCase()}.`,'life',c.x,c.y,c.col)}
     if(c.job&&c.age>=lifeOf(c)*.8){leaveJob(c);if(rand()<.4)log(`${nameOf(c)} retired.`,'life',c.x,c.y,c.col)}
     if(!c.sick&&!c.transit&&rand()<.03*spOf(c).ill*pm(c,'ill')){c.sick=1;if(rand()<.3)log(`${nameOf(c)} came down with space flu.`,'life',c.x,c.y,c.col)}
   }
@@ -1211,7 +1222,7 @@ async function talkTo(c,q,el){
   if(cmd&&(!SAMPLE||!cmd.done)){const a2=cmd.say;L.push({t:a2});setTimeout(()=>{bubbles=bubbles.filter(b=>b.cid!==c.id);bubbles.push({cid:c.id,txt:a2,until:performance.now()+8000});react(c,'nice')},700);renderTalk(c,el);return}
   if(!SAMPLE){const a2=quickReply(c,q);L.push({t:a2});setTimeout(()=>{bubbles=bubbles.filter(b=>b.cid!==c.id);bubbles.push({cid:c.id,txt:a2,until:performance.now()+8000});react(c,md>5?'nice':md<0?'mean':'q')},900);renderTalk(c,el);return}
   const p=c.partner&&CM.get(c.partner),hm=c.home&&BM.get(c.home),jb=c.job&&BM.get(c.job),sp=spOf(c);
-  const ctx=`You are ${c.fn}, a ${c.age}-year-old ${c.sex==='f'?'female':'male'} ${sp.one} (${sp.perk}) living on the planet ${colById(c.col).name} in the Starhaven space colony. Skill: ${SKILLS[c.skill]}. IQ ${Math.round(c.iq||100)}. Job: ${jb?TYPES[jb.type].name:'none'}. Home: ${hm?TYPES[hm.type].name:'none'}. Partner: ${p?p.fn+' the '+spOf(p).one:'none'}. Mood ${Math.round(c.hap)}/100, health ${Math.round(c.hp)}, hunger ${Math.round(100-c.hu)}/100. ${c.pwOn?'Superpower: '+POWERS[c.pw]+'.':''} ${c.villain?'You are secretly the saboteur. Never admit it, but be shifty.':''} Right now you are ${(ACT[c.act]||c.act).toLowerCase()} and thinking: "${c.th}". Latest colony news: ${S.headline||'nothing big'}.
+  const ctx=`You are ${c.fn}, a ${c.age}-year-old ${c.sex==='f'?'female':'male'} ${sp.one} (${sp.perk}) living on the planet ${colById(c.col).name} in the Starhaven space colony. Skill: ${skTitle(c)}${(c.sk2||[]).length?' (also learned '+c.sk2.map(k=>SKILLS[k]).join(', ')+')':''}. IQ ${Math.round(c.iq||100)}. Job: ${jb?TYPES[jb.type].name:'none'}. Home: ${hm?TYPES[hm.type].name:'none'}. Partner: ${p?p.fn+' the '+spOf(p).one:'none'}. Mood ${Math.round(c.hap)}/100, health ${Math.round(c.hp)}, hunger ${Math.round(100-c.hu)}/100. ${c.pwOn?'Superpower: '+POWERS[c.pw]+'.':''} ${c.villain?'You are secretly the saboteur. Never admit it, but be shifty.':''} Right now you are ${(ACT[c.act]||c.act).toLowerCase()} and thinking: "${c.th}". Latest colony news: ${S.headline||'nothing big'}.
 A voice from the sky (a viewer of the live stream) is talking to you. ${cmd?'You just did what they asked: you '+cmd.done+'. Confirm it in character. ':'If they ask you to do something you cannot do, say so kindly and suggest something you can do (go to the park, eat, sleep, work, build something, dance, find a partner). Answer their actual question directly. '}Reply in character in 1-2 short, funny, family-friendly sentences. If they are kind, be delighted. If they are mean, be a little hurt but witty. No narration, just your words.`;
   const msgs=[{role:'user',content:ctx+'\n\nThe voice says: '+L[0].t}];for(let i=1;i<L.length;i++)msgs.push({role:L[i].me?'user':'assistant',content:L[i].t});
   const ans={t:'…'};L.push(ans);renderTalk(c,el);
@@ -1364,7 +1375,7 @@ function renderSpecies(){
   el.innerHTML=SPECIES.map((sp,i)=>{const al=S.c.filter(c=>c.sp===i).sort((a,b)=>b.age-a.age),bornN=S.sp[i].b,diedN=S.sp[i].d;
     const rows=al.map(c=>{const jb=c.job&&BM.get(c.job),p=c.partner&&CM.get(c.partner);
       const tags=(c.pwOn?'⚡'+POWERS[c.pw]+' ':'')+(c.agent?'◆Agent ':'')+(c.patron?'♛Patron':'');
-      return`<tr data-cid="${c.id}"><td><b style="font:700 13px var(--body)">${c.fn}</b> ${c.sex==='f'?'♀':'♂'}</td><td>${c.age}</td><td>${SKILLS[c.skill]}</td><td>${Math.round(c.iq||100)}</td><td>${mini(c.hp,'#ef6a5a')}</td><td>${mini(c.hap,'#62c6b2')}</td><td>${mini(c.hu,'#f2b24a')}</td>
+      return`<tr data-cid="${c.id}"><td><b style="font:700 13px var(--body)">${c.fn}</b> ${c.sex==='f'?'♀':'♂'}</td><td>${c.age}</td><td>${skTitle(c)}${(c.sk2||[]).length?' +'+c.sk2.length:''}</td><td>${Math.round(c.iq||100)}</td><td>${mini(c.hp,'#ef6a5a')}</td><td>${mini(c.hap,'#62c6b2')}</td><td>${mini(c.hu,'#f2b24a')}</td>
         <td>${jb?TYPES[jb.type].name:(c.age<18?'Student':c.age>=lifeOf(c)*.8?'Retired':'Looking')}</td><td>${c.transit?'In space':colById(c.col).name}</td><td>${p?p.fn:'–'}</td><td>${ACT[c.act]||c.act}${c.sick?' · sick':''}</td><td class="tag">${tags}</td></tr>`}).join('');
     return`<details class="sp${al.length?'':' out'}" data-sp="${i}" style="--c:${sp.color}"${spOpen.has(i)?' open':''}><summary><span class="pics"><img src="${SPF[i]}" alt=""><img src="${SPURL[i]}" alt=""></span><b>${sp.many}<em>${al.length?al.length+' alive':'extinct'} · ${bornN} born · ${diedN} died${al.length?' · IQ '+iqStr(i):''}</em></b><small>${sp.from&&sp.adapt==null&&sp.from[0]!==sp.from[1]?'🧬 '+SPECIES[sp.from[0]].one+' × '+SPECIES[sp.from[1]].one+' · ':''}${sp.perk}</small></summary>
       <div class="tw">${al.length?`<table class="ct"><tr><th>Name</th><th>Age</th><th>Skill</th><th>IQ</th><th>Health</th><th>Mood</th><th>Fed</th><th>Job</th><th>Planet</th><th>Partner</th><th>Doing</th><th>Special</th></tr>${rows}</table>`:'<div class="hint">No one left.</div>'}</div></details>`}).join('');
@@ -1685,7 +1696,7 @@ function updatePanel(){
   const col=colById(S.view),cp=colC(col),alive=new Set(S.c.map(c=>c.sp)).size,next=TECH[S.tech];
   const st=[[S.c.length,'citizens'],[`${alive}/${SPECIES.length}`,'species alive'],[S.cols.length,S.cols.length===1?'planet settled':'planets settled'],[Math.floor(S.credits),'credits'],[next?`${Math.floor(S.research)}/${next.at}`:'max','research'],[Math.round(avgHap())+'%','happiness'],
     [Math.floor(col.food),`food on ${col.name}`,col.food<cp.length*2],[`${Math.floor(col.o2)} ${col.o2rate>=0?'▲':'▼'}`,`oxygen on ${col.name}`,col.o2<100||col.o2rate<0],[col.broken,'broken buildings',col.broken>0],
-    [`${S.era||1} · ${ERA[S.era||1]}`,'graphics era'],[S.c.filter(c=>c.pwOn).length,'superpowers'],[S.sp.reduce((s,x)=>s+x.b,0),'births'],[S.sp.reduce((s,x)=>s+x.d,0),'deaths'],[`${cp.length}/${housingCap(col)}`,'beds used']];
+    [`${S.era||1} · ${ERA[S.era||1]}`,'graphics era'],[S.c.filter(c=>c.pwOn).length,'superpowers'],[S.c.filter(c=>lvOf(c)>=3).length,'skill masters'],[S.sp.reduce((s,x)=>s+x.b,0),'births'],[S.sp.reduce((s,x)=>s+x.d,0),'deaths'],[`${cp.length}/${housingCap(col)}`,'beds used']];
   $('stats').innerHTML=st.map(([v,l,bad])=>`<div class="stat${bad?' bad':''}"><b>${v}</b><span>${l}</span></div>`).join('');
   const order=SPECIES.map((s,i)=>i).sort((a,b)=>scoreOf(b)-scoreOf(a));
   $('lb').innerHTML='<tr><th>Species</th><th>Alive</th><th>Born</th><th>Died</th><th>Mood</th></tr>'+order.map((i,r)=>{const al=S.c.filter(c=>c.sp===i);
@@ -1698,7 +1709,8 @@ function updatePanel(){
   let h='<div class="hint">Tap a citizen or building on the map.</div>';
   if(sel&&sel.k==='c'&&CM.has(sel.id)){const c=CM.get(sel.id),hm=c.home&&BM.get(c.home),jb=c.job&&BM.get(c.job),p=c.partner&&CM.get(c.partner),sp=spOf(c);
     h=`<div class="who"><img src="${charSprite(c.sp,c.sex).toDataURL()}" alt="">${c.fn} the ${sp.one}</div>
-    <div class="meta">${c.sex==='f'?'Female':'Male'} · age ${c.age} of ~${Math.round(lifeOf(c))} · IQ ${Math.round(c.iq||100)} · ${SKILLS[c.skill]} · ${colById(c.col).name} · ${ACT[c.act]||c.act}${c.sick?' · <span style="color:var(--warn)">sick</span>':''}</div>
+    <div class="meta">${c.sex==='f'?'Female':'Male'} · age ${c.age} of ~${Math.round(lifeOf(c))} · IQ ${Math.round(c.iq||100)} · ${colById(c.col).name} · ${ACT[c.act]||c.act}${c.sick?' · <span style="color:var(--warn)">sick</span>':''}</div>
+    <div class="meta">🛠 <b>${skTitle(c)}</b> ${lvOf(c)<4?`<span class="hint">· ${Math.round((c.xp||0)-LVX[lvOf(c)])}/${LVX[lvOf(c)+1]-LVX[lvOf(c)]} xp to ${LVN[lvOf(c)+1]}</span>`:''}${(c.sk2||[]).length?` · also knows ${c.sk2.map(k=>SKILLS[k]).join(', ')}`:''}${c.lx&&Object.keys(c.lx).length?` · learning ${Object.entries(c.lx).sort((a,b)=>b[1]-a[1]).slice(0,1).map(([k,v])=>SKILLS[k]+' '+Math.round(v/60*100)+'%')}`:''}</div>
     ${c.pwOn?`<div class="meta" style="color:var(--star)">⚡ Superpower: ${POWERS[c.pw]} (${PDESC[c.pw]})</div>`:''}
     ${c.agent?`<div class="meta" style="color:var(--violet)">◆ AI agent · goal: ${c.agent.goal?GOAL[c.agent.goal]:'choosing next goal'} · plans completed: ${c.agent.wins}</div>`:''}
     ${c.patron?`<div class="meta" style="color:var(--star)">♛ Patron citizen</div>`:''}
