@@ -47,6 +47,7 @@ h1 span{color:var(--star)}
 .chip{display:inline-flex;align-items:center;gap:5px;padding:3px 8px 3px 4px;font:600 12.5px var(--body);border:1px solid var(--line);border-radius:14px;background:var(--panel2)}
 .chip img{width:13px;height:16px;image-rendering:pixelated}
 .chip.sk{border-color:var(--star)}
+.histov{position:fixed;inset:0;z-index:50;background:#000c;display:flex;align-items:center;justify-content:center;padding:12px}.histbox{max-width:100%}#histCv{display:block;height:min(78vh,1280px);max-width:calc(100vw - 24px);aspect-ratio:9/16;object-fit:contain;border-radius:12px;border:2px solid var(--star);background:#070914;margin:0 auto}.hb{margin:6px 0 10px;padding-left:0;list-style:none;font-size:13px;line-height:1.45}.hb li{display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-bottom:1px solid #ffffff10}.hplay{flex:none;width:30px;height:30px;border-radius:50%;border:1px solid var(--star);background:transparent;color:var(--star);cursor:pointer}#hist summary{cursor:pointer;font-weight:700;padding:4px 0}
 .pw{display:grid;gap:6px}.pw div{display:flex;justify-content:space-between;gap:10px;font-size:13px;border-bottom:1px solid #ffffff12;padding-bottom:4px}.pw span{color:var(--mute,#9aa1bf)}.pw b{text-align:right}.facs{margin:0;padding-left:16px;font-size:13px;line-height:1.6}.al{font:700 10px sans-serif;padding:1px 5px;border-radius:4px}.al.good{background:#2f6b4a}.al.bad{background:#7a2a2a}.al.neutral{background:#4a4f6a}
 .pop .who img{width:27px;height:33px;image-rendering:pixelated}
 .act3{position:absolute;left:8px;right:8px;bottom:52px;z-index:2;display:flex;flex-wrap:wrap;gap:6px;justify-content:center;pointer-events:none}
@@ -228,6 +229,7 @@ textarea{width:100%;box-sizing:border-box;min-height:170px;background:var(--pane
         <canvas id="cv" aria-label="Live view of the colony"></canvas>
         <div class="povcard" id="povCard" hidden><img id="povImg" alt=""><div><b id="povName"></b><i id="povThought"></i></div><button id="povCtl" hidden>Take control</button><button id="povView" hidden>Behind them</button><button id="povNext">Next citizen</button><button id="povExit">Exit</button></div>
         <div class="pop" id="pop" hidden></div>
+        <div class="histov" id="histOv" hidden><div class="histbox"><canvas id="histCv" width="720" height="1280"></canvas><div class="row" style="justify-content:center;gap:8px;margin-top:8px"><button class="solo" id="histReplay">▶ Replay</button><button class="solo" id="histVid">🎬 Make video</button><button class="solo" id="histClose">Close</button></div><div class="hint" id="histMsg" style="text-align:center;margin-top:6px">Video saves as a vertical 9:16 clip, ready for Shorts.</div></div></div>
         <div class="menuov" id="menuov" hidden><b>CONTROL THE COLONY</b><div id="menuList"></div><div class="mq"><div id="qr"></div><span id="menuLink"></span></div></div>
         <div class="streamhud" id="streamhud" hidden></div>
         <div class="chatfeed" id="chatfeed" hidden></div>
@@ -251,6 +253,7 @@ textarea{width:100%;box-sizing:border-box;min-height:170px;background:var(--pane
         </div></details>
       <div class="hud" id="hud" aria-label="World stats"></div>
       <details class="card" id="bguide"><summary style="cursor:pointer;font:500 12px var(--mono);letter-spacing:1.2px;text-transform:uppercase;color:var(--muted)">Building guide · what each building does</summary><div id="bguideList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;margin-top:10px"></div></details>
+      <section class="card" id="histCard"><h2>📖 History book</h2><p class="hint" style="margin:0 0 8px">Everything that has happened in this world, chapter by chapter. Nobody wrote it. Tap ▶ to watch any moment replayed with the real characters, then make it a video.</p><div id="hist"></div></section>
       <section class="card"><h2>The species</h2><div class="species" id="species"></div></section>
       <div class="bar">
         <div class="grp" role="group" aria-label="Planets" id="planets"></div>
@@ -1015,9 +1018,9 @@ const zName=z=>`${'ABCDEFGH'[z%ZX]}${Math.floor(z/ZX)+1}`;
 const zCenter=z=>[(z%ZX+.5)*W/ZX,(Math.floor(z/ZX)+.5)*H/ZY];
 const zAdj=(a,b)=>Math.abs(a%ZX-b%ZX)+Math.abs(Math.floor(a/ZX)-Math.floor(b/ZX))===1;
 const HK=new Set(['tech','colony','species','election','disaster']);
-function chronLog(kind,txt,x,y,col){if(catchingUp&&kind==='disaster'&&rand()<.5)return;S.hist=S.hist||[];
+function chronLog(kind,txt,x,y,col){if(catchingUp&&kind==='disaster'&&rand()<.5)return;if(/SABOTAGE!|METEOR STRIKE|vandalized|broke into the treasury|space plague|FEUD!/.test(txt))return;if(/RALLY on/.test(txt)&&+((txt.match(/led (\d+)/)||[0,0])[1])<8)return;S.chron=S.chron||[];
   const cast=[];for(const c of S.c){if(cast.length>=4)break;if(new RegExp('\\b'+c.fn+'\\b').test(txt))cast.push({fn:c.fn,sp:c.sp,sex:c.sex,id:c.id})}
-  S.hist.push({d:day(),k:kind,t:txt,col:col||S.view,x:x||24,y:y||21,cast,age:ageNow(),era:S.era||1});if(S.hist.length>400)S.hist.splice(0,S.hist.length-400)}
+  S.chron.push({d:day(),k:kind,t:txt,col:col||S.view,x:x||24,y:y||21,cast,age:ageNow(),era:S.era||1,cyc:S.cycle||1});if(S.chron.length>400)S.chron.splice(0,S.chron.length-400)}
 function ageTick(){let a=0;while(a<AGES.length-1&&S.research>=AGES[a+1].at*PACE)a++;if(S.age==null){S.age=a;return}if(a<=S.age)return;const a0=S.age;S.age=a;const A=AGES[a];PRIM.clear();
   log(`${A.e} A NEW AGE! The citizens' discoveries pushed the colony into the ${A.n}. ${AGETXT[a]}`,'tech',24,21,S.view);if(typeof toast==='function')toast(`${A.e} ${A.n}!`);for(let k=a0+1;k<=a;k++)govShift(k)}
 function setGov(g,why){if(S.gov===g)return;const old=gov().n;S.gov=g;log(`🏛️ NEW GOVERNMENT: ${why} Starhaven went from ${old} to ${GOVS[g].n}.`,'election',24,21,S.view);if(!GOVS[g].el)pickRuler();else{S.lastElection=day();EVENTS.election()}}
@@ -1190,6 +1193,73 @@ function seasonDaily(){if(day()%(YEAR/4)!==1&&YEAR/4!==1)return;for(const col of
 function lessonsAfterReset(){const cyc=S.cycle||1;if(cyc<2)return;const remember=rand()<.5;S.lessons=S.lessons||{yes:0,no:0};
   if(remember){S.lessons.yes++;S.wis=(S.wis||0)+1;S.research+=250*S.wis;log(`📜 THE ELDERS REMEMBER. Around the fire, the oldest survivors tell legends of "the thinking machine that ended the world." The young ones listen. Ancient ruins give them a head start, and this time, they swear, they'll be careful.`,'tech',24,21,S.view)}
   else{S.lessons.no++;log(`🌫️ THE OLD WORLD IS FORGOTTEN. The ruins are just strange rocks now. Nobody remembers what happened, and history may be about to repeat itself.`,'tech',24,21,S.view)}}
+
+/* ---------- history book: replays with the real characters ---------- */
+const HKIND=e=>{const t=e.t;return /GREAT RESET/.test(t)?'reset':/NEW AGE/.test(t)?'age':/PAINT WAR on|⚔️ WAR/.test(t)?'war':/🕊️ PEACE|paint war on .* is over/i.test(t)?'peace':/REVOLUTION/.test(t)?'revolution':/COUP/.test(t)?'coup':/CRACKDOWN|RALLY/.test(t)?'rally':/NEW FACTION/.test(t)?'faction':/👑|ELECTION|NEW GOVERNMENT/.test(t)?'crown':/CLOSE CALL|quantum core almost/.test(t)?'quantum':/ELDERS REMEMBER|FORGOTTEN/.test(t)?'legend':(e.k==='species'||/NEW SPECIES/.test(t))?'species':e.k==='colony'?'colony':e.k==='tech'?'tech':'disaster'};
+const HTITLE={reset:'💥 THE GREAT RESET',age:'A NEW AGE',war:'⚔️ WAR!',peace:'🕊️ PEACE',revolution:'✊ REVOLUTION',coup:'🏴 COUP!',crown:'👑 NEW LEADER',rally:'📢 THE PEOPLE RISE',faction:'🚩 A FACTION IS BORN',species:'🧬 NEW SPECIES',colony:'🪐 NEW WORLD',quantum:'⚛️ CLOSE CALL',legend:'📜 LEGENDS',tech:'🔬 BREAKTHROUGH',disaster:'🚨 BREAKING'};
+const HDUR=13;
+function histCast(e){let c=(e.cast||[]).slice(0,4);if(c.length<2){const seen=new Set(c.map(x=>x.sp));for(let i=0;i<SPECIES.length&&c.length<3;i++){const s=SPECIES[i];if(s&&!seen.has(i)&&(e.t.includes(s.many)||e.t.includes(s.one))){seen.add(i);c.push({fn:'',sp:i,sex:c.length%2?'m':'f'})}}}
+  while(c.length<2){const r=S.c[(e.d*7+c.length*13)%Math.max(1,S.c.length)];if(!r)break;c.push({fn:'',sp:r.sp,sex:r.sex})}return c}
+function hSky(g,t,age){const top=['#2a1838','#2a2238','#1e2236','#0b1030','#070a24','#06101e','#14062a'][age]||'#0b1030',bot=['#e08a4a','#c8784a','#8a7a6a','#3a3a6a','#2a2a5a','#1a4a5a','#5a2a7a'][age]||'#3a3a6a';
+  const gr=g.createLinearGradient(0,0,0,900);gr.addColorStop(0,top);gr.addColorStop(1,bot);g.fillStyle=gr;g.fillRect(0,0,720,1280);
+  for(let i=0;i<70;i++){const x=(i*97.3)%720,y=(i*53.1)%560;g.fillStyle=`rgba(255,255,255,${(.25+.35*Math.sin(t*1.5+i))*(age>=2?1:.6)})`;g.fillRect(x,y,2,2)}
+  g.fillStyle='#ffffff20';g.beginPath();g.arc(560,190,46,0,7);g.fill();g.fillStyle='#ffffff14';g.beginPath();g.arc(620,250,22,0,7);g.fill()}
+function hSkyline(g,t,age,alpha,crumble){g.globalAlpha=alpha;const base=880;
+  for(let i=0;i<9;i++){const x=i*84-10,w=60+(i*17%30),cr=crumble?Math.min(1,crumble*(1+i%3*.3)):0;g.save();if(cr){g.translate(0,cr*120);g.rotate(cr*.15*(i%2?1:-1))}
+    if(age<=1){const h=70+(i*13%30);g.fillStyle=age?'#8a8278':'#6a4a32';g.fillRect(x,base-h*.55,w,h*.55);g.fillStyle=age?'#9a4a2a':'#a8823a';g.beginPath();g.moveTo(x-8,base-h*.55);g.lineTo(x+w/2,base-h);g.lineTo(x+w+8,base-h*.55);g.fill()}
+    else if(age===2){const h=110+(i*29%80);g.fillStyle='#4a3a3a';g.fillRect(x,base-h,w,h);g.fillStyle='#2a2222';g.fillRect(x+w-16,base-h-40,10,40);g.fillStyle=`rgba(200,200,200,${.25+.15*Math.sin(t+i)})`;g.beginPath();g.arc(x+w-11+Math.sin(t+i)*6,base-h-60-((t*20+i*9)%40),12,0,7);g.fill();g.fillStyle='#ffd35a90';for(let y=base-h+14;y<base-10;y+=22)g.fillRect(x+10,y,8,8)}
+    else{const h=180+(i*47%260)+(age>=4?80:0);g.fillStyle=age>=6?'#2a1a4a':age>=5?'#14243a':'#1e2a44';g.fillRect(x,base-h,w,h);g.fillStyle=age>=6?'#d08aff':age>=5?'#5af0ff':'#ffd35a';
+      for(let y=base-h+12;y<base-10;y+=18)for(let xx=x+8;xx<x+w-8;xx+=14)if((xx*y+i)%5)g.fillRect(xx,y,6,7);
+      if(age>=5){g.strokeStyle=age>=6?`rgba(210,140,255,${.5+.4*Math.sin(t*3+i)})`:`rgba(90,240,255,${.5+.4*Math.sin(t*2+i)})`;g.lineWidth=3;g.strokeRect(x,base-h,w,h)}}
+    g.restore()}
+  g.globalAlpha=1}
+function hGround(g,col){const bi=BIOME[(col&&col.biome)||0]||BIOME[0];g.fillStyle=bi.g1;g.fillRect(0,880,720,400);g.fillStyle=bi.g2;for(let i=0;i<30;i++)g.fillRect((i*131)%720,900+(i*37)%360,40,6);g.fillStyle=bi.sp;g.fillRect(0,880,720,6)}
+function hSprite(g,c,x,y,sc,flip,t,i){const img=charSprite(c.sp,c.sex);g.save();g.imageSmoothingEnabled=false;g.translate(x,y+Math.abs(Math.sin(t*6+i))*-6);if(flip)g.scale(-1,1);g.drawImage(img,-4.5*sc,-11*sc,9*sc,11*sc);g.restore();
+  if(c.fn){g.font='700 26px sans-serif';g.textAlign='center';const w=g.measureText(c.fn).width+16;g.fillStyle='#070914cc';g.fillRect(x-w/2,y+10,w,34);g.fillStyle=SPECIES[c.sp]?SPECIES[c.sp].color:'#fff';g.fillText(c.fn,x,y+36)}}
+function hWrap(g,txt,max){const w=txt.split(' '),out=[];let l='';for(const s of w){const tt=l?l+' '+s:s;if(g.measureText(tt).width>max&&l){out.push(l);l=s}else l=tt}if(l)out.push(l);return out}
+function drawScene(g,t,e){const k=HKIND(e),col=colById(e.col)||S.cols[0],cast=histCast(e),age=e.age||0,war=k==='war',reset=k==='reset';
+  g.save();if(reset&&t>3&&t<5){g.translate((Math.random()-.5)*24,(Math.random()-.5)*24)}
+  hSky(g,t,reset&&t>4?0:age);
+  if(k==='age'&&age>0){hSkyline(g,t,age-1,Math.max(0,1-(t-2.5)/2));hSkyline(g,t,age,Math.min(1,Math.max(0,(t-2.5)/2)))}
+  else if(reset){if(t<4.2)hSkyline(g,t,age,1,Math.max(0,(t-3)/1.2));else{hSkyline(g,t,0,Math.min(1,(t-4.2)/2))}}
+  else hSkyline(g,t,age,1);
+  hGround(g,col);
+  const n=cast.length,y0=1010;
+  cast.forEach((c,i)=>{let tx,flip=false;if(war){const left=i%2===0;tx=left?140+(i>>1)*90:580-(i>>1)*90;flip=!left}else tx=360+(i-(n-1)/2)*170;
+    const enter=Math.min(1,Math.max(0,(t-1.4-i*.25)/1.2)),x=(war?(i%2===0?-120:840):tx<360?-120:840)+(tx-(war?(i%2===0?-120:840):tx<360?-120:840))*(1-Math.pow(1-enter,3));
+    hSprite(g,c,x,y0,16,flip,enter<1?t:t*.3,i);
+    if(k==='crown'&&i===0&&t>3){g.font='90px sans-serif';g.textAlign='center';g.fillText('👑',x,y0-200-Math.max(0,(4-t))*80)}
+    if((k==='rally'||k==='revolution')&&t>2.5){g.fillStyle='#5a3a22';g.fillRect(x+40,y0-300,8,140);g.fillStyle='#fbf8ff';g.fillRect(x-20,y0-330,130,70);g.fillStyle='#ef6a5a';g.font='900 26px sans-serif';g.textAlign='center';g.fillText(k==='rally'?'✊ NOW!':'FREEDOM!',x+45,y0-286)}});
+  const T0=3;
+  if(war&&t>T0){for(let j=0;j<10;j++){const ph=((t-T0)*1.2+j*.37)%1,fromL=j%2===0,x0=fromL?180:540,x1=fromL?540:180,px=x0+(x1-x0)*ph,py=y0-160-Math.sin(ph*Math.PI)*260;const cc=SPECIES[cast[fromL?0:Math.min(1,n-1)].sp];g.fillStyle=cc?cc.color:'#f0f';g.beginPath();g.arc(px,py,14,0,7);g.fill()}
+    for(let j=0;j<16;j++){const cc=SPECIES[cast[j%Math.max(1,n)].sp];g.fillStyle=(cc?cc.color:'#f0f')+'cc';g.beginPath();g.arc((j*173)%720,960+(j*61)%180,10+(j%4)*6,0,7);g.fill()}}
+  if(k==='peace'&&t>T0){g.font='80px sans-serif';g.textAlign='center';for(let j=0;j<4;j++)g.fillText(j%2?'🕊️':'🤝',180+j*120,700-((t-T0)*60+j*80)%400)}
+  if(k==='species'&&t>T0){const bx=360,sc=Math.min(1,(t-T0)/1.5);g.fillStyle=`rgba(255,240,180,${.4*sc})`;g.beginPath();g.arc(bx,y0-260,140*sc,0,7);g.fill();g.font=`${70*sc}px sans-serif`;g.textAlign='center';g.fillText('🧬',bx,y0-380);g.fillText('💞',bx-150,y0-300);g.fillText('💞',bx+150,y0-300)}
+  if(k==='colony'&&t>T0){const ry=880-Math.pow(Math.max(0,t-T0-1),2)*60;g.fillStyle='#eef0f6';g.fillRect(340,ry-140,40,140);g.fillStyle='#e8735a';g.beginPath();g.moveTo(340,ry-140);g.lineTo(360,ry-190);g.lineTo(380,ry-140);g.fill();g.fillStyle=Math.sin(t*30)>0?'#ffd35a':'#ff8a3d';g.beginPath();g.moveTo(345,ry);g.lineTo(360,ry+60+Math.random()*30);g.lineTo(375,ry);g.fill()}
+  if((k==='age'||k==='tech'||k==='quantum')&&t>2){const p=Math.min(1,(t-2)/2);g.fillStyle=`rgba(255,255,255,${.25*Math.sin(p*Math.PI)})`;g.fillRect(0,0,720,1280);g.font=`${120*p}px sans-serif`;g.textAlign='center';g.fillText(k==='age'?AGES[age].e:k==='quantum'?'⚛️':'💡',360,560)}
+  if(reset&&t>3.4&&t<4.6){g.fillStyle=`rgba(255,255,255,${1-Math.abs(t-4)/.6})`;g.fillRect(0,0,720,1280)}
+  if((reset||k==='legend')&&t>5){g.fillStyle='#6a5a4a';g.fillRect(320,965,80,16);g.fillStyle=Math.sin(t*20)>0?'#ff8a3d':'#ffd35a';g.beginPath();g.moveTo(330,968);g.lineTo(360,900+Math.sin(t*9)*10);g.lineTo(390,968);g.fill()}
+  if(k==='disaster'&&t>T0&&t<T0+2.5){const q=Math.min(1,(t-T0)/1);g.fillStyle='#ffb050';g.beginPath();g.arc(720-q*420,100+q*700,24,0,7);g.fill();if(q>=1){g.fillStyle=`rgba(255,140,40,${1-(t-T0-1)/1.5})`;g.beginPath();g.arc(300,800,60+(t-T0-1)*200,0,7);g.fill()}}
+  if(k==='coup'&&t>T0){g.fillStyle=`rgba(180,20,20,${.18+.1*Math.sin(t*6)})`;g.fillRect(0,0,720,1280);g.font='110px sans-serif';g.textAlign='center';g.fillText('🏴',360,640)}
+  if(k==='faction'&&t>T0){g.font='110px sans-serif';g.textAlign='center';g.fillText(/GOOD/.test(e.t)?'🕊️':/BAD/.test(e.t)?'🏴':'⚖️',360,640)}
+  g.restore();
+  const tA=Math.min(1,t/.6)*(t<1.6?1:Math.max(0,1-(t-1.6)/.5));if(tA>0){g.fillStyle=`rgba(7,9,20,${.75*tA})`;g.fillRect(0,0,720,1280);g.globalAlpha=tA;g.textAlign='center';g.fillStyle='#ffd35a';g.font='900 64px sans-serif';g.fillText(k==='age'?`${AGES[age].e} ${AGES[age].n.toUpperCase()}`:HTITLE[k],360,560);g.fillStyle='#ece9f4';g.font='600 34px sans-serif';g.fillText(`Day ${e.d} · ${AGES[age].n}${(e.cyc||1)>1?` · Cycle ${e.cyc}`:''}`,360,630);g.globalAlpha=1}
+  if(t>=1.8){g.font='600 30px sans-serif';const plain=e.t.replace(/[\u{1F000}-\u{1FFFF}☀-➿️]/gu,'').trim(),shown=plain.slice(0,Math.floor((t-1.8)*38)),lines=hWrap(g,shown,640).slice(0,7),h=lines.length*40+40;
+    g.fillStyle='#070914e6';g.fillRect(20,1250-h-20,680,h);g.strokeStyle='#ffd35a';g.lineWidth=3;g.strokeRect(20,1250-h-20,680,h);g.fillStyle='#ece9f4';g.textAlign='left';lines.forEach((l,i)=>g.fillText(l,44,1250-h+18+i*40))}
+  g.textAlign='center';g.font='800 28px sans-serif';g.fillStyle='#ffd35acc';g.fillText('STARHAVEN · nobody controls them',360,60);g.textAlign='left'}
+let histSel=null,histT0=0,histRaf=0;
+function histOpen(i){const e=(S.chron||[])[i];if(!e)return;histSel=e;$('histOv').hidden=false;histPlay()}
+function histPlay(){if(!histSel)return;cancelAnimationFrame(histRaf);histT0=performance.now();const g=$('histCv').getContext('2d');
+  if(voiceOn&&window.speechSynthesis){try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(histSel.t.replace(/[\u{1F000}-\u{1FFFF}☀-➿️]/gu,''));u.voice=VOICE;u.rate=.95;setTimeout(()=>speechSynthesis.speak(u),1700)}catch(e){}}
+  const step=()=>{const t=(performance.now()-histT0)/1000;drawScene(g,Math.min(t,HDUR),histSel);if(t<HDUR&&!$('histOv').hidden)histRaf=requestAnimationFrame(step)};step()}
+function histVideo(){if(!histSel||studioBusy||rec){$('histMsg').textContent='Busy recording something else. Try again in a moment.';return}const e=histSel,k=HKIND(e);$('histMsg').textContent='Recording… keep this tab open and visible.';
+  studioRecorder(HDUR,{title:`Starhaven History: ${(k==='age'?AGES[e.age||0].n:HTITLE[k].replace(/[^\w ✊!]/gu,'').trim())} · Day ${e.d}`.slice(0,95),caption:e.t+(typeof LINKS==='function'?LINKS():''),day:e.d,kind:'history'},t=>{drawScene(cg,t,e);try{drawScene($('histCv').getContext('2d'),t,e)}catch(x){}},
+    async()=>{const c=clips[0];$('histMsg').textContent='Video ready.';if(!c)return;const fn=`starhaven-history-day${e.d}-${k}.${c.ext}`;
+      if(!DL){const a=document.createElement('a');a.href=c.url;a.download=fn;document.body.appendChild(a);a.click();a.remove();return}try{await DL.save({filename:fn,data:c.blob})}catch(x){}})}
+function renderHistory(force){const el=$('hist');if(!el)return;const H=S.chron||[];if(!force&&el.dataset.n==String(H.length)&&el.dataset.c==String(S.cycle||1))return;el.dataset.n=H.length;el.dataset.c=S.cycle||1;
+  if(!H.length){el.innerHTML='<p class="hint">Nothing historic yet. Give them time.</p>';return}
+  const groups=[];let cur=null;H.forEach((e,i)=>{const key=(e.cyc||1)+'-'+(e.age||0);if(!cur||cur.key!==key){cur={key,cyc:e.cyc||1,age:e.age||0,items:[]};groups.push(cur)}cur.items.push(i)});
+  el.innerHTML=groups.map((g,gi)=>`<details${gi===groups.length-1?' open':''}><summary>${(g.cyc>1?`Cycle ${g.cyc} · `:'')+AGES[g.age].e} ${AGES[g.age].n} <span class="hint">· ${g.items.length} moments</span></summary><ol class="hb">${g.items.slice(-40).map(i=>{const e=H[i];return`<li><button class="hplay" data-i="${i}" aria-label="Replay">▶</button><span><b>Day ${e.d}</b> ${esc(e.t.length>170?e.t.slice(0,167)+'…':e.t)}</span></li>`}).join('')}</ol></details>`).join('')}
 
 /* ---------- drama engine ---------- */
 let FX=[];
@@ -1913,7 +1983,7 @@ $('insp').addEventListener('click',panelAct);
 const bar=(v,col)=>`<div class="track"><div class="fill" style="width:${Math.round(Math.max(0,v))}%;background:${col}"></div></div>`;
 const ACT={hang:'Hanging out outside',sleep:'Sleeping',work:'Working',eat:'Eating',play:'Relaxing',study:'At the Academy',visit:'Visiting',home:'At home',walk:'Walking',heal:'At the Med Bay',flying:'Flying between planets'};
 function scoreOf(i){const al=S.c.filter(c=>c.sp===i);return al.length*10+S.sp[i].b*3+Math.round(avgHap(al)/4)}
-function updatePanel(){renderPower();
+function updatePanel(){renderPower();renderHistory();
   renderPlanetTabs();
   $('clock').textContent=`Day ${day()} · ${DAYS[wday()]} ${clk()}`;
   const col=colById(S.view),cp=colC(col),alive=new Set(S.c.map(c=>c.sp)).size,next=TECH[S.tech];
@@ -2003,7 +2073,7 @@ function narratorTick(dt){
   else if(narrT<-18){const t=colorLine();if(t)showLine('color',t);narrT=7}
 }
 let VOICE=null;
-const VPREF=[/natural/i,/neural/i,/Google UK English Female/,/Samantha/,/Aria/,/Jenny/,/Serena/,/Karen/,/Moira/,/Google US English/,/Daniel/];
+const VPREF=[/(Andrew|Guy|Christopher|Brian|Davis).*natural/i,/natural/i,/neural/i,/Google UK English Female/,/Samantha/,/Aria/,/Jenny/,/Serena/,/Karen/,/Moira/,/Google US English/,/Daniel/];
 function loadVoices(){try{const vs=speechSynthesis.getVoices().filter(v=>/^en/i.test(v.lang));if(!vs.length)return;
   let saved=null;try{saved=localStorage.getItem('starhaven.voice')}catch(e){}
   VOICE=vs.find(v=>v.name===saved)||null;if(!VOICE)for(const r of VPREF){VOICE=vs.find(v=>r.test(v.name));if(VOICE)break}VOICE=VOICE||vs[0];
@@ -2564,6 +2634,8 @@ $('ytForm').addEventListener('submit',e=>{e.preventDefault();if(YT.on){YT.on=fal
 setTimeout(()=>{try{$('ytKey').value=localStorage.getItem('starhaven.ytkey')||'';$('ytVid').value=localStorage.getItem('starhaven.ytvid')||''}catch(e){}
   const onGh=/github\.io$/.test(location.hostname);$('ytWhere').innerHTML=onGh?'You are in studio mode. Stream this page.':'Claude pages can\'t reach YouTube. Run the stream from your studio page instead: <b>aryehw330-lgtm.github.io/starhaven/?studio</b>'},0);
 
+$('hist').addEventListener('click',e=>{const b=e.target.closest('.hplay');if(b)histOpen(+b.dataset.i)});
+$('histReplay').onclick=histPlay;$('histVid').onclick=histVideo;$('histClose').onclick=()=>{$('histOv').hidden=true;cancelAnimationFrame(histRaf);try{speechSynthesis.cancel()}catch(e){}};
 /* ---------- loop ---------- */
 let acc=0,last=performance.now(),uiT=0,saveT=0,pending=0;
 function frame(now){
