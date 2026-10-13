@@ -305,6 +305,7 @@ textarea{width:100%;box-sizing:border-box;min-height:170px;background:var(--pane
         <div class="hint" id="ytWhere" style="margin-bottom:8px"></div>
         <form class="row" id="ytForm"><input id="ytKey" type="password" autocomplete="off" placeholder="YouTube API key" aria-label="YouTube API key" style="flex:1 1 160px"><input id="ytVid" placeholder="Live stream link" aria-label="Live stream link" style="flex:1 1 160px"><button class="solo" type="submit" id="ytGo">Connect chat</button></form>
         <div class="hint" id="ytStatus">Not connected.</div>
+        <div class="row" style="margin-top:8px"><button class="solo" id="packBtn">📦 Save today's story pack</button></div><div class="hint" id="packMsg">In studio mode this runs by itself once a day: the day's biggest moments are saved as videos plus a story file, for the daily YouTube episode.</div>
         <div class="hint" style="margin-top:6px">Viewers type <b>!talk Zibo go dance</b>, <b>!info Zibo</b> or <b>!help</b>. Super Chats trigger the price-menu event they can afford (or the one they name in their message).</div>
       </section>
       <section class="card owner"><h2>Stream price menu</h2>
@@ -1217,7 +1218,7 @@ function hGround(g,col){const bi=BIOME[(col&&col.biome)||0]||BIOME[0];g.fillStyl
 function hSprite(g,c,x,y,sc,flip,t,i){const img=charSprite(c.sp,c.sex);g.save();g.imageSmoothingEnabled=false;g.translate(x,y+Math.abs(Math.sin(t*6+i))*-6);if(flip)g.scale(-1,1);g.drawImage(img,-4.5*sc,-11*sc,9*sc,11*sc);g.restore();
   if(c.fn){g.font='700 26px sans-serif';g.textAlign='center';const w=g.measureText(c.fn).width+16;g.fillStyle='#070914cc';g.fillRect(x-w/2,y+10,w,34);g.fillStyle=SPECIES[c.sp]?SPECIES[c.sp].color:'#fff';g.fillText(c.fn,x,y+36)}}
 function hWrap(g,txt,max){const w=txt.split(' '),out=[];let l='';for(const s of w){const tt=l?l+' '+s:s;if(g.measureText(tt).width>max&&l){out.push(l);l=s}else l=tt}if(l)out.push(l);return out}
-function drawScene(g,t,e){const k=HKIND(e),col=colById(e.col)||S.cols[0],cast=histCast(e),age=e.age||0,war=k==='war',reset=k==='reset';
+function drawScene(g,t,e){const k=e.kind||HKIND(e),col=colById(e.col)||S.cols[0],cast=histCast(e),age=e.age||0,war=k==='war',reset=k==='reset';
   g.save();if(reset&&t>3&&t<5){g.translate((Math.random()-.5)*24,(Math.random()-.5)*24)}
   hSky(g,t,reset&&t>4?0:age);
   if(k==='age'&&age>0){hSkyline(g,t,age-1,Math.max(0,1-(t-2.5)/2));hSkyline(g,t,age,Math.min(1,Math.max(0,(t-2.5)/2)))}
@@ -1242,10 +1243,11 @@ function drawScene(g,t,e){const k=HKIND(e),col=colById(e.col)||S.cols[0],cast=hi
   if(k==='disaster'&&t>T0&&t<T0+2.5){const q=Math.min(1,(t-T0)/1);g.fillStyle='#ffb050';g.beginPath();g.arc(720-q*420,100+q*700,24,0,7);g.fill();if(q>=1){g.fillStyle=`rgba(255,140,40,${1-(t-T0-1)/1.5})`;g.beginPath();g.arc(300,800,60+(t-T0-1)*200,0,7);g.fill()}}
   if(k==='coup'&&t>T0){g.fillStyle=`rgba(180,20,20,${.18+.1*Math.sin(t*6)})`;g.fillRect(0,0,720,1280);g.font='110px sans-serif';g.textAlign='center';g.fillText('🏴',360,640)}
   if(k==='faction'&&t>T0){g.font='110px sans-serif';g.textAlign='center';g.fillText(/GOOD/.test(e.t)?'🕊️':/BAD/.test(e.t)?'🏴':'⚖️',360,640)}
+  if(e.snow){for(let i=0;i<120;i++){const x=((i*97.1)+Math.sin(t+i)*20+t*20)%720,y=((i*53.7)+t*90)%1280;g.fillStyle='#ffffffd8';g.fillRect(x,y,4,4)}g.fillStyle='#dfe9f640';g.fillRect(0,880,720,400)}
   g.restore();
-  const tA=Math.min(1,t/.6)*(t<1.6?1:Math.max(0,1-(t-1.6)/.5));if(tA>0){g.fillStyle=`rgba(7,9,20,${.75*tA})`;g.fillRect(0,0,720,1280);g.globalAlpha=tA;g.textAlign='center';g.fillStyle='#ffd35a';g.font='900 64px sans-serif';g.fillText(k==='age'?`${AGES[age].e} ${AGES[age].n.toUpperCase()}`:HTITLE[k],360,560);g.fillStyle='#ece9f4';g.font='600 34px sans-serif';g.fillText(`Day ${e.d} · ${AGES[age].n}${(e.cyc||1)>1?` · Cycle ${e.cyc}`:''}`,360,630);g.globalAlpha=1}
-  if(t>=1.8){g.font='600 30px sans-serif';const plain=e.t.replace(/[\u{1F000}-\u{1FFFF}☀-➿️]/gu,'').trim(),shown=plain.slice(0,Math.floor((t-1.8)*38)),lines=hWrap(g,shown,640).slice(0,7),h=lines.length*40+40;
-    g.fillStyle='#070914e6';g.fillRect(20,1250-h-20,680,h);g.strokeStyle='#ffd35a';g.lineWidth=3;g.strokeRect(20,1250-h-20,680,h);g.fillStyle='#ece9f4';g.textAlign='left';lines.forEach((l,i)=>g.fillText(l,44,1250-h+18+i*40))}
+  const tA=e.nt?0:Math.min(1,t/.6)*(t<1.6?1:Math.max(0,1-(t-1.6)/.5));if(tA>0){g.fillStyle=`rgba(7,9,20,${.75*tA})`;g.fillRect(0,0,720,1280);g.globalAlpha=tA;g.textAlign='center';g.fillStyle='#ffd35a';g.font='900 64px sans-serif';g.fillText(k==='age'?`${AGES[age].e} ${AGES[age].n.toUpperCase()}`:HTITLE[k],360,560);g.fillStyle='#ece9f4';g.font='600 34px sans-serif';g.fillText(`Day ${e.d} · ${AGES[age].n}${(e.cyc||1)>1?` · Cycle ${e.cyc}`:''}`,360,630);g.globalAlpha=1}
+  if(t>=(e.nt?0:1.8)){g.font='600 30px sans-serif';const plain=(e.cap||e.t).replace(/[\u{1F000}-\u{1FFFF}☀-➿️]/gu,'').trim(),shown=e.nt?plain:plain.slice(0,Math.floor((t-1.8)*38)),lines=hWrap(g,shown,640).slice(0,7),h=lines.length*40+40;if(lines.length&&shown.trim()){
+    g.fillStyle='#070914e6';g.fillRect(20,1250-h-20,680,h);g.strokeStyle='#ffd35a';g.lineWidth=3;g.strokeRect(20,1250-h-20,680,h);g.fillStyle='#ece9f4';g.textAlign='left';lines.forEach((l,i)=>g.fillText(l,44,1250-h+18+i*40))}}
   g.textAlign='center';g.font='800 28px sans-serif';g.fillStyle='#ffd35acc';g.fillText('STARHAVEN · nobody controls them',360,60);g.textAlign='left'}
 let histSel=null,histT0=0,histRaf=0;
 function histOpen(i){const e=(S.chron||[])[i];if(!e)return;histSel=e;$('histOv').hidden=false;histPlay()}
@@ -2210,7 +2212,7 @@ $('epBtn').onclick=async()=>{if(studioBusy||rec)return;
 };
 
 function tryStartClip(){
-  if(!pendingClip||rec||studioBusy||!clipOn||catchingUp||speed===0)return;
+  if(!pendingClip||rec||studioBusy||packBusy||!clipOn||catchingUp||speed===0)return;
   const now=performance.now(),d=day();if(now-lastClip<180000||(clipsPerDay[d]||0)>=3){pendingClip=null;return}
   const ev=pendingClip;pendingClip=null;
   const aud=AC&&musicOn&&REC_DEST;const mime=(aud?['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus']:[]).concat(['video/mp4;codecs=avc1.42E01E','video/mp4','video/webm;codecs=vp9','video/webm']).find(t=>{try{return MediaRecorder.isTypeSupported(t)}catch(e){return false}});if(!mime)return;
@@ -2636,6 +2638,24 @@ setTimeout(()=>{try{$('ytKey').value=localStorage.getItem('starhaven.ytkey')||''
 
 $('hist').addEventListener('click',e=>{const b=e.target.closest('.hplay');if(b)histOpen(+b.dataset.i)});
 $('histReplay').onclick=histPlay;$('histVid').onclick=histVideo;$('histClose').onclick=()=>{$('histOv').hidden=true;cancelAnimationFrame(histRaf);try{speechSynthesis.cancel()}catch(e){}};
+let packBusy=false;
+const PRI2={reset:10,quantum:9,age:8,revolution:8,coup:8,legend:7,species:7,war:6,peace:5,crown:5,colony:5,faction:4,rally:3,tech:3,disaster:2};
+function dlBlob(blob,fn){const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=fn;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),60000)}
+async function storyPack(force){const today=new Date().toLocaleDateString('en-CA');let last='',since=0;try{last=localStorage.getItem('starhaven.pack')||'';since=+(localStorage.getItem('starhaven.packIdx')||0)}catch(e){}
+  if(!force&&(!STUDIO||last===today))return;if(packBusy)return;packBusy=true;for(let w=0;w<45&&(studioBusy||rec);w++)await new Promise(r=>setTimeout(r,1000));if(studioBusy||rec){packBusy=false;if(force)$('packMsg').textContent='Busy recording. Try again in a minute.';return}
+  const C=S.chron||[];if(since>C.length)since=0;const fresh=C.slice(since);if(!fresh.length&&!force){packBusy=false;return}
+  try{localStorage.setItem('starhaven.pack',today);localStorage.setItem('starhaven.packIdx',String(C.length))}catch(e){}
+  const ranked=fresh.map(e=>[e,(PRI2[HKIND(e)]||1)+Math.random()*.5]).sort((a,b)=>b[1]-a[1]),seenK=new Set(),top=[];for(const[e]of ranked){const k=HKIND(e);if(seenK.has(k))continue;seenK.add(k);top.push(e);if(top.length>=4)break}for(const[e]of ranked){if(top.length>=4)break;if(!top.includes(e))top.push(e)}top.sort((a,b)=>a.d-b.d);
+  const rl=S.mayor&&CM.get(S.mayor.id),files=[];
+  const pack={date:today,gameDay:day(),cycle:S.cycle||1,age:AGES[ageNow()].n,season:seasonOf(colById(1)).n,government:gov().n,leader:rl?`${LT()} ${rl.fn} the ${spOf(rl).one}`:'none',population:S.c.length,planets:S.cols.map(c=>c.name),
+    speciesAlive:[...new Set(S.c.map(c=>c.sp))].map(i=>SPECIES[i].many),factions:(S.fac||[]).map(f=>({name:f.n,type:f.al,members:f.mem})),war:S.war&&SPECIES[S.war.a]?`${SPECIES[S.war.a].many} ${S.war.ra} - ${S.war.rb} ${SPECIES[S.war.b].many}`:'none',aiPower:Math.round(S.aip||0),resets:(S.cycle||1)-1,
+    events:fresh.map(e=>({day:e.d,kind:HKIND(e),age:AGES[e.age||0].n,text:e.t,cast:(e.cast||[]).map(c=>`${c.fn} the ${(SPECIES[c.sp]||{}).one}`)})),clips:[]};
+  $('packMsg').textContent=`Recording ${top.length} story clips…`;
+  for(let i=0;i<top.length;i++){const e=top[i],k=HKIND(e);await new Promise(res=>{studioRecorder(HDUR,{title:`Starhaven: ${k} Day ${e.d}`,caption:e.t,day:e.d,kind:'pack'},t=>drawScene(cg,t,e),res)});
+    const c=clips[0];if(c){const fn=`starhaven-pack-${today}-${i+1}-${k}.${c.ext}`;dlBlob(c.blob,fn);pack.clips.push({file:fn,day:e.d,kind:k,text:e.t,seconds:HDUR})}await new Promise(r=>setTimeout(r,1500))}
+  dlBlob(new Blob([JSON.stringify(pack,null,2)],{type:'application/json'}),`starhaven-pack-${today}.json`);packBusy=false;$('packMsg').textContent=`Story pack for ${today} saved: ${pack.clips.length} clips + story file (${pack.events.length} events).`}
+$('packBtn').onclick=()=>storyPack(true);
+setTimeout(()=>{if(typeof STUDIO!=='undefined'&&STUDIO){storyPack();setInterval(()=>storyPack(),15*60000)}},90000);
 /* ---------- loop ---------- */
 let acc=0,last=performance.now(),uiT=0,saveT=0,pending=0;
 function frame(now){
@@ -2657,7 +2677,7 @@ const STUDIO=/[?&]studio\b/.test(location.search);
 const PUBLIC=(/github\.io$/.test(location.hostname)&&!STUDIO)||/[?&]public\b/.test(location.search);
 if(STUDIO){const pb=document.getElementById('pubbar');pb.hidden=false;pb.innerHTML='🎬 <b>Studio mode.</b> This is your streaming copy of Starhaven. Press 📺 Stream mode for OBS, and connect YouTube chat under Viewer events.'}
 if(PUBLIC){document.body.classList.add('public');const pb=document.getElementById('pubbar');pb.hidden=false;
-  pb.innerHTML='🪐 <b>Your own Starhaven universe.</b> Tap any citizen to talk to them, try <b>First person 3D</b>, and see who survives. Watch the official colony LIVE on <a href="https://www.youtube.com/channel/UCGGaz2lb-7h7Mz9oEUIOLVQ/live" target="_blank" rel="noopener">YouTube: Dad of 6 Hacks</a>.'}
+  pb.innerHTML='🪐 <b>Your own Starhaven universe.</b> Tap any citizen to talk to them, try <b>First person 3D</b>, and see who survives. Watch the official colony LIVE on <a href="https://www.youtube.com/channel/UCGGaz2lb-7h7Mz9oEUIOLVQ/live" target="_blank" rel="noopener">YouTube: Dad of 6 Hacks</a>, and talk to its citizens in the live chat.<br>🔓 <b>Coming soon:</b> at <b>1,000 subscribers</b>, the official world from the stream opens to everyone. Same citizens, same history, live. <a href="https://www.youtube.com/channel/UCGGaz2lb-7h7Mz9oEUIOLVQ?sub_confirmation=1" target="_blank" rel="noopener">Subscribe to unlock it</a>.'}
 if(!load())newWorld();
 else{const away=(Date.now()-(S.saved||Date.now()))/1000,ticks=Math.min(Math.floor(away*12),2880);
   if(ticks>120){pending=ticks;catchingUp=true;$('catchup').hidden=false;log(`While you were away, ${Math.round(ticks/60)} game hours passed.`,'life')}}
