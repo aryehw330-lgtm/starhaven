@@ -60,6 +60,12 @@ h1 span{color:var(--star)}
 .pubbar{background:var(--panel);border:1px solid var(--star);border-radius:8px;padding:10px 14px;font-size:14px;line-height:1.45}
 .pubbar a{color:var(--star)}
 body.public .owner{display:none!important}
+.chatfeed{position:absolute;left:12px;bottom:56px;z-index:2;width:min(360px,calc(100% - 290px));display:flex;flex-direction:column;gap:5px}
+.chatfeed div{background:#070914e6;border:1px solid var(--line);border-left:3px solid var(--teal);border-radius:8px;padding:6px 9px;font-size:13.5px;line-height:1.35;animation:cfin .3s ease-out}
+.chatfeed div.sc{border-left-color:var(--star);background:#2a2208ee}
+.chatfeed b{color:var(--star)}
+@keyframes cfin{from{transform:translateX(-20px);opacity:0}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.chatfeed div{animation:none}}
 .menuov{position:absolute;right:12px;bottom:56px;z-index:2;width:250px;background:#070914ee;border:2px solid var(--star);border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.5}
 .menuov b{font:700 15px var(--display);color:var(--star);display:block;margin-bottom:4px}
 .menuov .row2{display:flex;justify-content:space-between;gap:8px}.menuov .row2 span:last-child{color:var(--star);font-weight:700}
@@ -223,6 +229,7 @@ textarea{width:100%;box-sizing:border-box;min-height:170px;background:var(--pane
         <div class="pop" id="pop" hidden></div>
         <div class="menuov" id="menuov" hidden><b>CONTROL THE COLONY</b><div id="menuList"></div><div class="mq"><div id="qr"></div><span id="menuLink"></span></div></div>
         <div class="streamhud" id="streamhud" hidden></div>
+        <div class="chatfeed" id="chatfeed" hidden></div>
         <div class="spot" id="spot" hidden></div>
         <div class="act3" id="act3" hidden></div>
         <div class="dpad" id="dpad" hidden><span></span><button data-k="up" aria-label="Walk forward">▲</button><span></span><button data-k="left" aria-label="Turn left">◀</button><button data-k="down" aria-label="Walk back">▼</button><button data-k="right" aria-label="Turn right">▶</button></div>
@@ -288,6 +295,12 @@ textarea{width:100%;box-sizing:border-box;min-height:170px;background:var(--pane
         <form class="row" id="urlForm"><input id="liveIn" placeholder="Live stream link" aria-label="Live stream link" style="flex:1 1 160px"><input id="siteIn" placeholder="Public site link" aria-label="Public site link" style="flex:1 1 160px"><button class="solo" type="submit">Save links</button></form>
         <form class="row" id="evForm" onsubmit="return false"><input id="evName" maxlength="16" placeholder="Donor's name" aria-label="Donor's name"></form>
         <div class="bar" id="evBtns"></div>
+      </section>
+      <section class="card owner" id="ytCard"><h2>YouTube live chat bridge</h2>
+        <div class="hint" id="ytWhere" style="margin-bottom:8px"></div>
+        <form class="row" id="ytForm"><input id="ytKey" type="password" autocomplete="off" placeholder="YouTube API key" aria-label="YouTube API key" style="flex:1 1 160px"><input id="ytVid" placeholder="Live stream link" aria-label="Live stream link" style="flex:1 1 160px"><button class="solo" type="submit" id="ytGo">Connect chat</button></form>
+        <div class="hint" id="ytStatus">Not connected.</div>
+        <div class="hint" style="margin-top:6px">Viewers type <b>!talk Zibo go dance</b>, <b>!info Zibo</b> or <b>!help</b>. Super Chats trigger the price-menu event they can afford (or the one they name in their message).</div>
       </section>
       <section class="card owner"><h2>Stream price menu</h2>
         <div class="hint" style="margin-bottom:8px">Shown in the corner during Stream mode. One per line: label, then price.</div>
@@ -1946,7 +1959,7 @@ function renderClips(){
 }
 $('clips').addEventListener('click',async e=>{const b=e.target.closest('button');if(!b)return;const c=clips[+b.dataset.i];if(!c)return;
   if(b.dataset.a==='copy'){navigator.clipboard.writeText(c.title+'\n\n'+c.caption).then(()=>{b.textContent='Copied'},()=>{b.textContent='Copy failed'});return}
-  if(!DL){b.textContent='Saving not available here';return}
+  if(!DL){const a=document.createElement('a');a.href=c.url;a.download=`starhaven-day${c.day}-${c.kind}.${c.ext}`;document.body.appendChild(a);a.click();a.remove();b.textContent='Saved';return}
   try{const data=c.blob||await(await fetch(c.url)).blob();await DL.save({filename:`starhaven-day${c.day}-${c.kind}.${c.ext}`,data});b.textContent='Saved'}catch(err){b.textContent=err&&err.code==='declined'?'Save video':'Could not save'}});
 let lbIdx=-1;
 $('clips').addEventListener('click',e=>{const v=e.target.closest('video');if(!v)return;const li=v.closest('li'),i=[...$('clips').children].indexOf(li),c=clips[i];if(!c)return;lbIdx=i;
@@ -1954,7 +1967,7 @@ $('clips').addEventListener('click',e=>{const v=e.target.closest('video');if(!v)
 function closeLb(){$('lightbox').hidden=true;$('lbVid').pause();lbIdx=-1}
 $('lbClose').onclick=closeLb;$('lightbox').addEventListener('click',e=>{if(e.target.id==='lightbox')closeLb()});addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('lightbox').hidden)closeLb()});
 $('lbCopy').onclick=()=>{const c=clips[lbIdx];if(c)navigator.clipboard.writeText(c.title+'\n\n'+c.caption).then(()=>{$('lbCopy').textContent='Copied'},()=>{$('lbCopy').textContent='Copy failed'})};
-$('lbSave').onclick=async()=>{const c=clips[lbIdx];if(!c)return;if(!DL){$('lbSave').textContent='Saving not available here';return}try{const data=c.blob||await(await fetch(c.url)).blob();await DL.save({filename:`starhaven-day${c.day}-${c.kind}.${c.ext}`,data});$('lbSave').textContent='Saved'}catch(err){$('lbSave').textContent='Save video'}};
+$('lbSave').onclick=async()=>{const c=clips[lbIdx];if(!c)return;if(!DL){const a=document.createElement('a');a.href=c.url;a.download=`starhaven-day${c.day}-${c.kind}.${c.ext}`;document.body.appendChild(a);a.click();a.remove();$('lbSave').textContent='Saved';return}try{const data=c.blob||await(await fetch(c.url)).blob();await DL.save({filename:`starhaven-day${c.day}-${c.kind}.${c.ext}`,data});$('lbSave').textContent='Saved'}catch(err){$('lbSave').textContent='Save video'}};
 $('clips').addEventListener('mouseover',e=>{const v=e.target.closest('video');if(v)v.play().catch(()=>{})});
 $('clips').addEventListener('mouseout',e=>{const v=e.target.closest('video');if(v)v.pause()});
 (async()=>{try{if(window.claude&&typeof window.claude.use==='function'){[ASSETS,DB,DL]=await Promise.all([claude.use('assets'),claude.use('db'),claude.use('downloads')]);loadClips()}}catch(e){}})();
@@ -2259,6 +2272,62 @@ setInterval(()=>{if(streamOn)streamHud()},1000);
 setTimeout(()=>{$('priceIn').value=(S&&S.prices)||DEF_PRICES},0);
 $('priceSave').onclick=()=>{S.prices=$('priceIn').value.trim().slice(0,800)||DEF_PRICES;save();renderMenu();$('priceMsg').textContent='Saved.'};
 
+/* ---------- YouTube live chat bridge ---------- */
+const YT={key:'',chat:'',token:'',on:false,timer:0,seen:new Set(),q:[],last:{},used:0,day:''};
+function ptDay(){return new Date(Date.now()-7*3600e3).toISOString().slice(0,10)}
+function ytLoadUse(){try{const o=JSON.parse(localStorage.getItem('starhaven.ytuse')||'{}');YT.day=o.day||ptDay();YT.used=o.day===ptDay()?o.used||0:0}catch(e){YT.used=0;YT.day=ptDay()}}
+function ytSaveUse(){try{localStorage.setItem('starhaven.ytuse',JSON.stringify({day:ptDay(),used:YT.used}))}catch(e){}}
+async function ytFetch(path,params,cost){const u=new URL('https://www.googleapis.com/youtube/v3/'+path);for(const k in params)u.searchParams.set(k,params[k]);u.searchParams.set('key',YT.key);
+  if(YT.day!==ptDay()){YT.day=ptDay();YT.used=0}YT.used+=cost;ytSaveUse();const r=await fetch(u);const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error((j.error&&j.error.message)||('HTTP '+r.status));return j}
+function vidId(v){v=v.trim();const m=v.match(/(?:v=|youtu\.be\/|\/live\/|\/shorts\/)([\w-]{11})/);return m?m[1]:(/^[\w-]{11}$/.test(v)?v:'')}
+function feed(html,sc){const el=$('chatfeed');el.hidden=false;const d=document.createElement('div');if(sc)d.className='sc';d.innerHTML=html;el.appendChild(d);while(el.children.length>4)el.firstChild.remove();setTimeout(()=>{d.remove();if(!el.children.length)el.hidden=true},20000)}
+const esc=t=>String(t).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+const EVMAP=[['💞','match',/match|love|species/i],['⚡','power',/power/i],['🛸','ufo',/alien|ufo|abduct/i],['☄️','meteor',/meteor|asteroid/i],['🎉','party',/party|fireworks/i],['👶','baby',/baby|name/i],['💎','crystal',/crystal|gem/i]];
+function menuItems(){return(S.prices||DEF_PRICES).split('\n').map(l=>{const[a,b]=l.split('|').map(x=>(x||'').trim());const price=parseFloat((b||'').replace(/[^0-9.]/g,''));const hit=EVMAP.find(([em])=>a.includes(em));return hit&&price>0?{label:a,price,ev:hit[1],re:hit[2]}:null}).filter(Boolean)}
+function superChat(name,amount,disp,msg){
+  const items=menuItems(),col=colById(S.view);let pickI=items.filter(i=>i.price<=amount&&i.re.test(msg||'')).sort((a,b)=>b.price-a.price)[0]||items.filter(i=>i.price<=amount).sort((a,b)=>b.price-a.price)[0];
+  feed(`<b>💛 ${esc(name)}</b> sent ${esc(disp)}${pickI?` → ${esc(pickI.label)}`:''}${msg?`: “${esc(msg.slice(0,80))}”`:''}`,true);
+  if(!pickI){log(`Thank you ${name} for the ${disp} Super Chat! The whole colony waves at you.`,'party',col.cx,col.cy,col.id);EVENTS.party&&fx({k:'spark',col:col.id,x:col.cx,y:col.cy,dur:2500});return}
+  if(pickI.ev==='baby'){S.patrons.push({name:name.replace(/[^\p{L}\p{N} _.-]/gu,'').slice(0,16)||'Viewer',sp:-1,status:'waiting',added:day()});log(`${name} paid ${disp} to name the next baby! The next newborn will be called ${name.slice(0,16)}.`,'party',col.cx,col.cy,col.id);renderPatrons();save();return}
+  const fn=EVENTS[pickI.ev];if(!fn)return;if(pickI.ev==='election'){S.lastElection=day();fn()}else if(pickI.ev==='boom')fn(col);else fn(col,name.slice(0,20));save()}
+function chatCmd(name,text){
+  const now=performance.now(),t=text.trim();if(!t.startsWith('!'))return;
+  if(YT.last[name]&&now-YT.last[name]<20000)return;YT.last[name]=now;
+  let m=t.match(/^!talk\s+(\S+)\s+(.+)$/i);
+  if(m){const c=S.c.find(x=>x.fn.toLowerCase()===m[1].toLowerCase());if(!c){feed(`<b>${esc(name)}</b>: no citizen named ${esc(m[1])}`);return}
+    if(YT.q.length<15)YT.q.push({name,c,msg:m[2].slice(0,160)});return}
+  m=t.match(/^!info\s+(\S+)$/i);if(m){feed(`<b>${esc(name)}</b> asked about ${esc(m[1])}`);spotlight(m[1],name);return}
+  if(/^!help\b/i.test(t)){feed(`Type <b>!talk NAME message</b> to talk to any citizen, or <b>!info NAME</b> to see their life. Tell them to go somewhere, build something, dance, or find love!`);return}
+  if(/^!(who|names|list)\b/i.test(t)){const ns=S.c.filter(c=>c.col===S.view&&!c.transit&&c.age>=4).slice(0,8).map(c=>c.fn).join(', ');feed(`Citizens on screen: <b>${esc(ns)}</b>`)}}
+setInterval(()=>{const it=YT.q.shift();if(!it||!CM.has(it.c.id))return;feed(`<b>${esc(it.name)}</b> → ${esc(it.c.fn)}: “${esc(it.msg)}”`);
+  if(!it.c.transit&&it.c.col!==S.view)setView(it.c.col,true);talkTo(it.c,it.msg,null)},7000);
+async function ytPoll(){if(!YT.on)return;let wait=45000;
+  try{const j=await ytFetch('liveChat/messages',{liveChatId:YT.chat,part:'snippet,authorDetails',maxResults:200,...(YT.token?{pageToken:YT.token}:{})},5);
+    const first=!YT.token;YT.token=j.nextPageToken||YT.token;
+    if(!first)for(const it of j.items||[]){if(YT.seen.has(it.id))continue;YT.seen.add(it.id);const sn=it.snippet||{},au=it.authorDetails||{},nm=au.displayName||'Viewer';
+      if(sn.type==='superChatEvent'&&sn.superChatDetails){const d=sn.superChatDetails;superChat(nm,(+d.amountMicros||0)/1e6,d.amountDisplayString||'',d.userComment||'')}
+      else if(sn.type==='superStickerEvent'&&sn.superStickerDetails){const d=sn.superStickerDetails;superChat(nm,(+d.amountMicros||0)/1e6,d.amountDisplayString||'','')}
+      else if(sn.type==='newSponsorEvent'||sn.type==='membershipGiftingEvent'){feed(`<b>🎖️ ${esc(nm)}</b> became a member!`,true);S.patrons.push({name:nm.slice(0,16),sp:-1,status:'waiting',added:day()});log(`${nm} joined as a channel member! A baby will be named after them.`,'party');renderPatrons()}
+      else if(sn.type==='textMessageEvent')chatCmd(nm,sn.displayMessage||(sn.textMessageDetails&&sn.textMessageDetails.messageText)||'')}
+    if(YT.seen.size>3000)YT.seen=new Set([...YT.seen].slice(-1000));
+    const msLeft=(()=>{const d=new Date(Date.now()-7*3600e3);return((24-d.getUTCHours())*3600-d.getUTCMinutes()*60-d.getUTCSeconds())*1000})(),callsLeft=Math.max(1,Math.floor((9800-YT.used)/5));
+    wait=Math.max(j.pollingIntervalMillis||5000,10000,msLeft/callsLeft);
+    $('ytStatus').textContent=`Connected. Checking chat every ${Math.round(wait/1000)}s · quota used today: ${YT.used}/10,000 · ${YT.q.length} waiting to talk`}
+  catch(e){$('ytStatus').textContent=`Chat error: ${e.message}. Retrying in a minute.`;wait=60000;if(/quota/i.test(e.message))wait=30*60000;if(/ended|disabled|not found/i.test(e.message)){YT.on=false;$('ytGo').textContent='Connect chat';return}}
+  YT.timer=setTimeout(ytPoll,wait)}
+async function ytStart(){
+  if(!/^https?:$/.test(location.protocol)||location.hostname.endsWith('claude.ai')||location.hostname.endsWith('claudeusercontent.com')){$('ytStatus').textContent='The chat bridge only works on your GitHub site in studio mode (link above).';return}
+  YT.key=$('ytKey').value.trim();const id=vidId($('ytVid').value);if(!YT.key||!id){$('ytStatus').textContent='Paste your API key and your live stream link first.';return}
+  try{localStorage.setItem('starhaven.ytkey',YT.key);localStorage.setItem('starhaven.ytvid',$('ytVid').value.trim())}catch(e){}
+  ytLoadUse();$('ytStatus').textContent='Connecting…';
+  try{const j=await ytFetch('videos',{part:'liveStreamingDetails,snippet',id},1);const v=j.items&&j.items[0];const cid=v&&v.liveStreamingDetails&&v.liveStreamingDetails.activeLiveChatId;
+    if(!cid){$('ytStatus').textContent="That video isn't live right now (or has no live chat). Start the stream first, then connect.";return}
+    YT.chat=cid;YT.token='';YT.on=true;$('ytGo').textContent='Disconnect';feed('🔴 Live chat connected! Type <b>!help</b>');ytPoll()}
+  catch(e){$('ytStatus').textContent='Could not connect: '+e.message}}
+$('ytForm').addEventListener('submit',e=>{e.preventDefault();if(YT.on){YT.on=false;clearTimeout(YT.timer);$('ytGo').textContent='Connect chat';$('ytStatus').textContent='Disconnected.';return}ytStart()});
+setTimeout(()=>{try{$('ytKey').value=localStorage.getItem('starhaven.ytkey')||'';$('ytVid').value=localStorage.getItem('starhaven.ytvid')||''}catch(e){}
+  const onGh=/github\.io$/.test(location.hostname);$('ytWhere').innerHTML=onGh?'You are in studio mode. Stream this page.':'Claude pages can\'t reach YouTube. Run the stream from your studio page instead: <b>aryehw330-lgtm.github.io/starhaven/?studio</b>'},0);
+
 /* ---------- loop ---------- */
 let acc=0,last=performance.now(),uiT=0,saveT=0,pending=0;
 function frame(now){
@@ -2276,7 +2345,9 @@ function frame(now){
 document.addEventListener('visibilitychange',()=>{if(document.hidden)save()});
 addEventListener('pagehide',save);
 
-const PUBLIC=/github\.io$/.test(location.hostname)||/[?&]public\b/.test(location.search);
+const STUDIO=/[?&]studio\b/.test(location.search);
+const PUBLIC=(/github\.io$/.test(location.hostname)&&!STUDIO)||/[?&]public\b/.test(location.search);
+if(STUDIO){const pb=document.getElementById('pubbar');pb.hidden=false;pb.innerHTML='🎬 <b>Studio mode.</b> This is your streaming copy of Starhaven. Press 📺 Stream mode for OBS, and connect YouTube chat under Viewer events.'}
 if(PUBLIC){document.body.classList.add('public');const pb=document.getElementById('pubbar');pb.hidden=false;
   pb.innerHTML='🪐 <b>Your own Starhaven universe.</b> Tap any citizen to talk to them, try <b>First person 3D</b>, and see who survives. Watch the official colony LIVE on <a href="https://www.youtube.com/channel/UCGGaz2lb-7h7Mz9oEUIOLVQ/live" target="_blank" rel="noopener">YouTube: Dad of 6 Hacks</a>.'}
 if(!load())newWorld();
