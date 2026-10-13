@@ -214,7 +214,7 @@ textarea{width:100%;box-sizing:border-box;min-height:170px;background:var(--pane
         <div class="ov-top" id="ovTop"></div>
         <div class="ov-cap" id="ovCap"></div>
         <div id="catchup" hidden></div>
-        <div class="ticker" aria-live="polite"><b id="tkTag">LIVE</b><span id="tkText">Twenty settlers. Ten species. One planet.</span></div>
+        <div class="ticker" aria-live="polite"><b id="tkTag">LIVE</b><span id="tkText">22 settlers. 11 species. One planet.</span></div>
         <div class="ov-speed" role="group" aria-label="Speed on map"><button data-s="0">❚❚</button><button data-s="1">1×</button><button data-s="2">3×</button><button data-s="3">10×</button></div>
       </div>
       <div class="hud" id="hud" aria-label="World stats"></div>
@@ -1568,7 +1568,7 @@ function updatePanel(){
   if(++spTick%5===1)renderSpecies();
   $('hud').innerHTML=H.map(([k,v,bad])=>`<div class="${bad?'bad':''}"><b>${v}</b><span>${k}</span></div>`).join('');
   $('ovTop').innerHTML=`${col.name.toUpperCase()} · DAY ${day()}<small>${S.c.length} citizens · ${alive}/${SPECIES.length} species · leader: ${SPECIES[lead].many}</small>`;
-  $('ovCap').textContent=S.headline||'Twenty settlers. Ten species. One planet. Who survives?';
+  $('ovCap').textContent=S.headline||'22 settlers. 11 species. One planet. Who survives?';
 }
 const PRI={disaster:7,party:5,election:6,species:8,colony:7,tech:6,crisis:5,death:5,power:5,birth:4,ship:4,milestone:4,build:2,built:1,life:1,agent:1,market:1};
 function recap(){
