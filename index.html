@@ -350,7 +350,7 @@ const lvOf=c=>{const x=c.xp||0;let l=0;while(l<4&&x>=LVX[l+1])l++;return l};
 const knows=(c,k)=>c.skill===k||(c.sk2||[]).includes(k);
 const skTitle=c=>{const l=lvOf(c);return l>=4&&S.tech>=3?ADV[c.skill]:LVN[l]+' '+SKILLS[c.skill]};
 function skillUp(c,before){const l=lvOf(c);if(l<=before)return;const t=skTitle(c);
-  if(l>=2)log(`${nameOf(c)} leveled up! Now ${/^[aeiou]/i.test(t)?'an':'a'} ${t}.${l>=4?' The whole colony works faster around them.':''}`,l>=3?'power':'life',c.x,c.y,c.col);
+  if(l>=2)log(`${nameOf(c)} leveled up! Now ${/^[aeiou]/i.test(t)?'an':'a'} ${t}.${l>=4?' One of the best in the colony.':''}`,l>=3?'power':'life',c.x,c.y,c.col);
   if(l>=3&&typeof toast==='function')toast(`${c.fn}: ${t}!`);c.iq=(c.iq||100)+l}
 const TYPES={
   hall:{name:'Command Dome',cost:0,time:1,house:0,jobs:1,skill:'leader'},
